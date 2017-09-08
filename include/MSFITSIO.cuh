@@ -88,10 +88,11 @@ typedef struct canvas_variables{
 
 __host__ freqData countVisibilities(char * MS_name, Field *&fields);
 __host__ canvasVariables readCanvas(char *canvas_name, fitsfile *&canvas, float b_noise_aux, int status_canvas, int verbose_flag);
-__host__ void readFITSImageValues(char *imageName, fitsfile *file, float *values, int status, long M, long N);
+__host__ void readFITSImageValues(char *imageName, fitsfile *file, float *&values, int status, long M, long N);
 
 __host__ void readMSMCNoise(char *MS_name, Field *fields, freqData data);
 __host__ void readSubsampledMS(char *MS_name, Field *fields, freqData data, float random_probability);
+__host__ void readMCNoiseSubsampledMS(char *MS_name, Field *fields, freqData data, float random_probability);
 __host__ void readMS(char *MS_name, Field *fields, freqData data);
 
 __host__ void MScopy(char const *in_dir, char const *in_dir_dest, int verbose_flag);
@@ -99,6 +100,10 @@ __host__ void MScopy(char const *in_dir, char const *in_dir_dest, int verbose_fl
 __host__ void residualsToHost(Field *fields, freqData data, int num_gpus, int firstgpu);
 __host__ void readMS(char *file, char *file2, Field *fields);
 __host__ void writeMS(char *infile, char *outfile, Field *fields, freqData data, float random_probability, int verbose_flag);
+__host__ void writeMSSIM(char *infile, char *outfile, Field *fields, freqData data, int verbose_flag);
+__host__ void writeMSSIMMC(char *infile, char *outfile, Field *fields, freqData data, int verbose_flag);
+__host__ void writeMSSIMSubsampled(char *infile, char *outfile, Field *fields, freqData data, float random_probability, int verbose_flag);
+__host__ void writeMSSIMSubsampledMC(char *infile, char *outfile, Field *fields, freqData data, float random_probability, int verbose_flag);
 
 __host__ void fitsOutputFloat(float *I, fitsfile *canvas, char *mempath, int iteration, long M, long N, int option);
 __host__ void fitsOutputCufftComplex(cufftComplex *I, fitsfile *canvas, char *out_image, char *mempath, int iteration, float fg_scale, long M, long N, int option);

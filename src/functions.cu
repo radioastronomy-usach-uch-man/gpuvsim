@@ -35,7 +35,7 @@ extern int numVisibilities, iterations, iterthreadsVectorNN, blocksVectorNN, crp
 status_mod_in, verbose_flag, t_telescope, multigpu, firstgpu, reg_term, apply_noise;
 
 extern cufftHandle plan1GPU;
-extern cufftComplex *device_I, *device_V, *device_fg_image, *device_image;
+extern cufftComplex *device_I, *device_V, *device_image;
 
 extern float *device_noise_image;
 extern float noise_jypix, fg_scale, DELTAX, DELTAY, deltau, deltav, random_probability;
@@ -286,6 +286,11 @@ __host__ Vars getOptions(int argc, char **argv) {
         exit(EXIT_FAILURE);
   }
 
+  if(variables.randoms < 0.0 || variables.randoms > 1.0){
+    print_help();
+    exit(EXIT_FAILURE);
+  }
+
   if(!isPow2(variables.blockSizeX) && !isPow2(variables.blockSizeY) && !isPow2(variables.blockSizeV)){
     print_help();
     exit(EXIT_FAILURE);
@@ -309,72 +314,7 @@ __global__ void hermitianSymmetry(float *Ux, float *Vx, cufftComplex *Vo, float 
   }
 }
 
-__device__ float attenuation(float beam_fwhm, float beam_freq, float beam_cutoff, float freq, float xobs, float yobs, float DELTAX, float DELTAY)
-{
 
-		int j = threadIdx.x + blockDim.x * blockIdx.x;
-		int i = threadIdx.y + blockDim.y * blockIdx.y;
-
-    float atten_result;
-
-    int x0 = xobs;
-    int y0 = yobs;
-    float x = (j - x0) * DELTAX * RPDEG;
-    float y = (i - y0) * DELTAY * RPDEG;
-
-    float arc = sqrtf(x*x+y*y);
-    float c = 4.0*logf(2.0);
-    float a = (beam_fwhm*beam_freq/(freq*1e-9));
-    float r = arc/a;
-    float atten = expf(-c*r*r);
-    if(arc <= beam_cutoff){
-      atten_result = atten;
-    }else{
-      atten_result = 0.0;
-    }
-
-    return atten_result;
-}
-
-
-
-__global__ void total_attenuation(float *total_atten, float beam_fwhm, float beam_freq, float beam_cutoff, float freq, float xobs, float yobs, float DELTAX, float DELTAY, long N)
-{
-  int j = threadIdx.x + blockDim.x * blockIdx.x;
-  int i = threadIdx.y + blockDim.y * blockIdx.y;
-
-  float attenPerFreq = attenuation(beam_fwhm, beam_freq, beam_cutoff, freq, xobs, yobs, DELTAX, DELTAY);
-
-  total_atten[N*i+j] += attenPerFreq;
-}
-
-__global__ void mean_attenuation(float *total_atten, int channels, long N)
-{
-  int j = threadIdx.x + blockDim.x * blockIdx.x;
-  int i = threadIdx.y + blockDim.y * blockIdx.y;
-
-  total_atten[N*i+j] /= channels;
-}
-
-
-__global__ void weight_image(float *weight_image, float *total_atten, float noise_jypix, long N)
-{
-  int j = threadIdx.x + blockDim.x * blockIdx.x;
-  int i = threadIdx.y + blockDim.y * blockIdx.y;
-
-  float atten = total_atten[N*i+j];
-  weight_image[N*i+j] += (atten / noise_jypix) * (atten / noise_jypix);
-}
-
-__global__ void noise_image(float *noise_image, float *weight_image, float noise_jypix, long N)
-{
-  int j = threadIdx.x + blockDim.x * blockIdx.x;
-  int i = threadIdx.y + blockDim.y * blockIdx.y;
-
-  float noiseval;
-  noiseval = sqrtf(1.0/weight_image[N*i+j]);
-  noise_image[N*i+j] = noiseval;
-}
 
 __global__ void apply_beam(float beam_fwhm, float beam_freq, float beam_cutoff, cufftComplex *image, cufftComplex *fg_image, long N, float xobs, float yobs, float freq, float DELTAX, float DELTAY)
 {
@@ -513,7 +453,8 @@ __host__ void uvsim(cufftComplex *I)
     for(int f=0; f<data.nfields;f++){
       for(int i=0; i<data.total_frequencies;i++){
         if(fields[f].numVisibilitiesPerFreq[i] != 0){
-        	apply_beam<<<numBlocksNN, threadsPerBlockNN>>>(beam_fwhm, beam_freq, beam_cutoff, device_image, device_fg_image, N, fields[f].global_xobs, fields[f].global_yobs, fields[f].visibilities[i].freq, DELTAX, DELTAY);
+
+        	apply_beam<<<numBlocksNN, threadsPerBlockNN>>>(beam_fwhm, beam_freq, beam_cutoff, device_image, device_I, N, fields[f].global_xobs, fields[f].global_yobs, fields[f].visibilities[i].freq, DELTAX, DELTAY);
         	gpuErrchk(cudaDeviceSynchronize());
 
         	//FFT 2D

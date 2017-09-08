@@ -37,7 +37,7 @@ int iter=0;
 
 cufftHandle plan1GPU;
 
-cufftComplex *device_I, *device_V, *device_fg_image, *device_image;
+cufftComplex *device_I, *device_V, *device_image;
 
 float DELTAX, DELTAY, deltau, deltav, beam_noise, beam_bmaj;
 float beam_bmin, b_noise_aux, random_probability = 1.0;
@@ -47,7 +47,7 @@ dim3 threadsPerBlockNN;
 dim3 numBlocksNN;
 
 int threadsVectorReduceNN, blocksVectorReduceNN, crpix1, crpix2, verbose_flag = 0, apply_noise = 0, it_maximum, status_mod_in;
-int num_gpus, multigpu, firstgpu, selected, t_telescope, reg_term;
+int selected, t_telescope, reg_term;
 char *output;
 
 double ra, dec;
@@ -100,11 +100,7 @@ __host__ int main(int argc, char **argv) {
 	char *modinput = variables.modin;
   selected = variables.select;
   int total_visibilities = 0;
-  //random_probability = variables.randoms;
-
-  multigpu = 0;
-  firstgpu = -1;
-
+  random_probability = variables.randoms;
 
   readInputDat(inputdat);
   init_beam(t_telescope);
@@ -135,11 +131,6 @@ __host__ int main(int argc, char **argv) {
 	   printf("Number of frequencies = %d\n", data.total_frequencies);
    }
 
- //printf("number of FINAL host CPUs:\t%d\n", omp_get_num_procs());
- if(verbose_flag){
-   printf("Number of CUDA devices and threads: \t%d\n", num_gpus);
- }
-
   for(int f=0; f<data.nfields; f++){
   	fields[f].visibilities = (Vis*)malloc(data.total_frequencies*sizeof(Vis));
   	fields[f].device_visibilities = (Vis*)malloc(data.total_frequencies*sizeof(Vis));
@@ -163,7 +154,8 @@ __host__ int main(int argc, char **argv) {
 	   printf("Reading visibilities and FITS input files...\n");
   }
 
-	readMS(msinput, fields, data);
+
+  readMS(msinput, fields, data);
 
   if(verbose_flag){
     printf("MS File Successfully Read\n");
@@ -173,38 +165,13 @@ __host__ int main(int argc, char **argv) {
   }
 
   //Declaring block size and number of blocks for visibilities
-  float sum_inverse_weight = 0.0;
-  float sum_weights = 0.0;
   for(int f=0; f<data.nfields; f++){
   	for(int i=0; i< data.total_frequencies; i++){
-      //Calculating beam noise
-      for(int j=0; j< fields[f].numVisibilitiesPerFreq[i]; j++){
-        if(fields[f].visibilities[i].weight[j] != 0.0){
-          sum_inverse_weight += 1/fields[f].visibilities[i].weight[j];
-          sum_weights += fields[f].visibilities[i].weight[j];
-        }
-      }
-
   		fields[f].visibilities[i].numVisibilities = fields[f].numVisibilitiesPerFreq[i];
   		long UVpow2 = NearestPowerOf2(fields[f].visibilities[i].numVisibilities);
       fields[f].visibilities[i].threadsPerBlockUV = variables.blockSizeV;
   		fields[f].visibilities[i].numBlocksUV = UVpow2/fields[f].visibilities[i].threadsPerBlockUV;
     }
-  }
-
-  if(verbose_flag){
-      float aux_noise = sqrt(sum_inverse_weight)/total_visibilities;
-      printf("Calculated NOISE %e\n", aux_noise);
-      printf("Using canvas NOISE anyway...\n");
-      printf("Canvas NOISE = %e\n", beam_noise);
-  }
-
-  if(beam_noise == -1){
-      beam_noise = sqrt(sum_inverse_weight)/total_visibilities;
-      if(verbose_flag){
-        printf("No NOISE value detected in canvas...\n");
-        printf("Using NOISE: %e ...\n", beam_noise);
-      }
   }
 
   cudaSetDevice(selected);
@@ -296,14 +263,14 @@ __host__ int main(int argc, char **argv) {
     x=M-1;
     y--;
 	}
-  exit(-1);
+
   free(input_sim);
 	////////////////////////////////////////////////CUDA MEMORY ALLOCATION FOR DEVICE///////////////////////////////////////////////////
 
 
   cudaSetDevice(selected);
 	gpuErrchk(cudaMalloc((void**)&device_V, sizeof(cufftComplex)*M*N));
-	 gpuErrchk(cudaMalloc((void**)&device_image, sizeof(cufftComplex)*M*N));
+	gpuErrchk(cudaMalloc((void**)&device_image, sizeof(cufftComplex)*M*N));
 
   cudaSetDevice(selected);
 
@@ -334,11 +301,22 @@ __host__ int main(int argc, char **argv) {
 
   uvsim(device_I);
 
-	//Saving residuals to disk
-  //residualsToHost(fields, data, num_gpus, firstgpu);
+	//Saving visibilities to disk
+  residualsToHost(fields, data, 1, 0);
   printf("Saving residuals to MS...\n");
-	writeMS(msinput, msoutput, fields, data, random_probability, verbose_flag);
-	printf("Residuals saved.\n");
+
+
+  if(apply_noise && random_probability < 1.0){
+    writeMSSIMSubsampledMC(msinput, msoutput, fields, data, random_probability, verbose_flag);
+  }else if(random_probability < 1.0){
+    writeMSSIMSubsampled(msinput, msoutput, fields, data, random_probability, verbose_flag);
+  }else if(apply_noise){
+    writeMSSIMMC(msinput, msoutput, fields, data, verbose_flag);
+  }else{
+     writeMSSIM(msinput, msoutput, fields, data, verbose_flag);
+  }
+
+	printf("Visibilities saved.\n");
 
 	//Free device and host memory
 	printf("Free device and host memory\n");
