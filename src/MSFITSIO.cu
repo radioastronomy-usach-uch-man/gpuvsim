@@ -74,7 +74,7 @@ __host__ freqData countVisibilities(char * MS_name, Field *&fields)
           if(field == f && spw == i && flag == false){
             for (int sto=0; sto<freqsAndVisibilities.nstokes; sto++){
               auxbool = flagCol[j][sto];
-              if(auxbool[0] == false && weights[sto] != 0.0){
+              if(auxbool[0] == false && weights[sto] > 0.0){
                 fields[f].numVisibilitiesPerFreq[counter]++;
               }
             }
@@ -193,7 +193,7 @@ __host__ void readMSMCNoise(char *MS_name, Field *fields, freqData data)
           if(field == f && spw == i && flag == false){
             for (int sto=0; sto<data.nstokes; sto++) {
               auxbool = flagCol[j][sto];
-              if(auxbool[0] == false && weights[sto] != 0.0){
+              if(auxbool[0] == false && weights[sto] > 0.0){
                 fields[f].visibilities[g].stokes[h] = polarizations[sto];
                 fields[f].visibilities[g].u[h] = uvw[0];
                 fields[f].visibilities[g].v[h] = uvw[1];
@@ -286,7 +286,7 @@ __host__ void readSubsampledMS(char *MS_name, Field *fields, freqData data, floa
           if(field == f && spw == i && flag == false){
             for (int sto=0; sto < data.nstokes; sto++){
               auxbool = flagCol[j][sto];
-              if(auxbool[0] == false && weights[sto] != 0.0){
+              if(auxbool[0] == false && weights[sto] > 0.0){
                 u = Random();
                 if(u<random_probability){
                   fields[f].visibilities[g].stokes[h] = polarizations[sto];
@@ -391,7 +391,7 @@ __host__ void readMCNoiseSubsampledMS(char *MS_name, Field *fields, freqData dat
           if(field == f && spw == i && flag == false){
             for (int sto=0; sto < data.nstokes; sto++){
               auxbool = flagCol[j][sto];
-              if(auxbool[0] == false && weights[sto] != 0.0){
+              if(auxbool[0] == false && weights[sto] > 0.0){
                 u = Random();
                 if(u<random_probability){
                   fields[f].visibilities[g].stokes[h] = polarizations[sto];
@@ -496,7 +496,7 @@ __host__ void readMS(char *MS_name, Field *fields, freqData data)
           if(field == f && spw == i && flag == false){
             for (int sto=0; sto < data.nstokes; sto++) {
               auxbool = flagCol[j][sto];
-              if(auxbool[0] == false && weights[sto] != 0.0){
+              if(auxbool[0] == false && weights[sto] > 0.0){
                 fields[f].visibilities[g].stokes[h] = polarizations[sto];
                 fields[f].visibilities[g].u[h] = uvw[0];
                 fields[f].visibilities[g].v[h] = uvw[1];
@@ -636,7 +636,7 @@ __host__ void writeMS(char *infile, char *outfile, Field *fields, freqData data,
           if(field == f && spw == i && flag == false){
             for (int sto=0; sto< data.nstokes; sto++){
               auxbool = flagCol[j][sto];
-              if(auxbool[0] == false && weights[sto] != 0.0){
+              if(auxbool[0] == false && weights[sto] > 0.0){
                 comp.real() = fields[f].visibilities[g].Vo[h].x - fields[f].visibilities[g].Vm[h].x;
                 comp.imag() = fields[f].visibilities[g].Vo[h].y - fields[f].visibilities[g].Vm[h].y;
                 dataCol[j][sto] = comp;
@@ -704,7 +704,7 @@ __host__ void writeMSSIM(char *infile, char *outfile, Field *fields, freqData da
           if(field == f && spw == i && flag == false){
             for (int sto=0; sto< data.nstokes; sto++){
               auxbool = flagCol[j][sto];
-              if(auxbool[0] == false && weights[sto] != 0.0){
+              if(auxbool[0] == false && weights[sto] > 0.0){
                 comp.real() = fields[f].visibilities[g].Vm[h].x;
                 comp.imag() = fields[f].visibilities[g].Vm[h].y;
                 dataCol[j][sto] = comp;
@@ -774,7 +774,7 @@ __host__ void writeMSSIMMC(char *infile, char *outfile, Field *fields, freqData 
           if(field == f && spw == i && flag == false){
             for (int sto=0; sto< data.nstokes; sto++){
               auxbool = flagCol[j][sto];
-              if(auxbool[0] == false && weights[sto] != 0.0){
+              if(auxbool[0] == false && weights[sto] > 0.0){
                 u = Normal(0.0, 1.0);
                 comp.real() = fields[f].visibilities[g].Vm[h].x + u * (1/sqrt(weights[sto]));
                 u = Normal(0.0, 1.0);
@@ -846,7 +846,7 @@ __host__ void writeMSSIMSubsampled(char *infile, char *outfile, Field *fields, f
           if(field == f && spw == i && flag == false){
             for (int sto=0; sto< data.nstokes; sto++){
               auxbool = flagCol[j][sto];
-              if(auxbool[0] == false && weights[sto] != 0.0){
+              if(auxbool[0] == false && weights[sto] > 0.0){
                 u = Random();
                 if(u<random_probability){
                   comp.real() = fields[f].visibilities[g].Vm[h].x;
@@ -925,7 +925,7 @@ __host__ void writeMSSIMSubsampledMC(char *infile, char *outfile, Field *fields,
           if(field == f && spw == i && flag == false){
             for (int sto=0; sto< data.nstokes; sto++){
               auxbool = flagCol[j][sto];
-              if(auxbool[0] == false && weights[sto] != 0.0){
+              if(auxbool[0] == false && weights[sto] > 0.0){
                 u = Random();
                 if(u<random_probability){
                   u = Normal(0.0, 1.0);
