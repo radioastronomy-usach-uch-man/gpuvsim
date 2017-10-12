@@ -236,8 +236,13 @@ __host__ int main(int argc, char **argv) {
 
   	direccos(fields[f].obsra, fields[f].obsdec, raimage, decimage, &lobs,  &mobs);
 
-  	fields[f].global_xobs = (crpix1 - 1.0) - lobs/deltax;
-  	fields[f].global_yobs = (crpix2 - 1.0) - mobs/deltay;
+  	if(crpix1 != crpix2){
+		fields[f].global_xobs = (crpix1 - 1.0) - (lobs/deltax) + 1.0;
+		fields[f].global_yobs = (crpix2 - 1.0) - (mobs/deltay) - 1.0;
+	}else{
+		fields[f].global_xobs = (crpix1 - 1.0) - (lobs/deltax) - 1.0;
+		fields[f].global_yobs = (crpix2 - 1.0) - (mobs/deltay) - 1.0;
+	}
     if(verbose_flag){
   	   printf("Field %d - Ra: %f, dec: %f , x0: %f, y0: %f\n", f, fields[f].obsra, fields[f].obsdec, fields[f].global_xobs, fields[f].global_yobs);
     }
