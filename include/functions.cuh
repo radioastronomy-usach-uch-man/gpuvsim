@@ -30,6 +30,7 @@ const float RPDEG = (PI/180.0);
 const double RPDEG_D = (PI_D/180.0);
 const float RPARCM = (PI/(180.0*60.0));
 const float LIGHTSPEED = 2.99792458E8;
+const float RZ = 1.2196698912665045;
 
 typedef struct variablesPerFreq{
   cufftHandle plan;
@@ -47,11 +48,13 @@ typedef struct variables {
   char *output;
   char *inputdat;
   char *modin;
+  char *alpha;
   int select;
   int blockSizeX;
   int blockSizeY;
   int blockSizeV;
   float randoms;
+  float nu_0;
 } Vars;
 
 __host__ void goToError();
@@ -65,6 +68,6 @@ __host__ Vars getOptions(int argc, char **argv);
 __host__ void uvsim(cufftComplex *I);
 
 __global__ void hermitianSymmetry(float *Ux, float *Vx, cufftComplex *Vo, float freq, int numVisibilities);
-__global__ void apply_beam(float beam_fwhm, float beam_freq, float beam_cutoff, cufftComplex *image, cufftComplex *fg_image, long N, float xobs, float yobs, float fg_scale, float freq, float DELTAX, float DELTAY);
+__global__ void apply_beam(float antenna_diameter, float pb_factor, float pb_cutoff, cufftComplex *image, long N, float xobs, float yobs, float freq, float DELTAX, float DELTAY);
 __global__ void phase_rotate(cufftComplex *data, long M, long N, float xphs, float yphs);
 __global__ void vis_mod(cufftComplex *Vm, cufftComplex *Vo, cufftComplex *V, float *Ux, float *Vx, float deltau, float deltav, long numVisibilities, long N);

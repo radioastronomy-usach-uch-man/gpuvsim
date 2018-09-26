@@ -41,7 +41,7 @@ cufftComplex *device_I, *device_V, *device_image;
 
 float DELTAX, DELTAY, deltau, deltav, beam_noise, beam_bmaj;
 float beam_bmin, b_noise_aux, random_probability = 1.0;
-float noise_jypix, fg_scale, beam_fwhm, beam_freq, beam_cutoff;
+float noise_jypix, fg_scale, antenna_diameter, pb_factor, pb_cutoff;
 
 dim3 threadsPerBlockNN;
 dim3 numBlocksNN;
@@ -224,7 +224,7 @@ __host__ int main(int argc, char **argv) {
 
 
 
-	cufftComplex *host_I = (cufftComplex*)malloc(M*N*sizeof(cufftComplex));
+	float2 *host_I = (float2*)malloc(M*N*sizeof(float2));
   /////////////////////////////////////////////////////CALCULATE DIRECTION COSINES/////////////////////////////////////////////////
   double raimage = ra * RPDEG_D;
   double decimage = dec * RPDEG_D;
@@ -254,6 +254,7 @@ __host__ int main(int argc, char **argv) {
   }
 	////////////////////////////////////////////////////////MAKE STARTING IMAGE////////////////////////////////////////////////////////
 	float *input_sim;
+  float *input_sim_alpha;
 
   readFITSImageValues(modinput, mod_in, input_sim, status_mod_in, M, N);
 
@@ -270,6 +271,7 @@ __host__ int main(int argc, char **argv) {
 	}
 
   free(input_sim);
+  free(input_sim_alpha);
 	////////////////////////////////////////////////CUDA MEMORY ALLOCATION FOR DEVICE///////////////////////////////////////////////////
 
 

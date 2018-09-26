@@ -42,7 +42,7 @@ extern float noise_jypix, fg_scale, DELTAX, DELTAY, deltau, deltav, random_proba
 
 extern dim3 threadsPerBlockNN, numBlocksNN;
 
-extern float beam_noise, beam_bmaj, beam_bmin, b_noise_aux, beam_fwhm, beam_freq, beam_cutoff;
+extern float beam_noise, beam_bmaj, beam_bmin, b_noise_aux, antenna_diameter, pb_factor, pb_cutoff;
 extern double ra, dec;
 
 extern freqData data;
@@ -64,43 +64,42 @@ __host__ void goToError()
 
 __host__ void init_beam(int telescope)
 {
-  switch(telescope) {
-  case 1:
-    beam_fwhm = 33.0*RPARCM;   /* radians CBI2 */
-    beam_freq = 30.0;          /* GHz */
-    beam_cutoff = 90.0*RPARCM; /* radians */
-    break;
-  case 2:
-    beam_fwhm = (8.4220/60)*RPARCM;   /* radians ALMA */
-    beam_freq = 691.4;          /* GHz */
-    beam_cutoff = 1.0*RPARCM; /* radians */
-    break;
-  case 3: //test
-    beam_fwhm = 5*RPARCM;   /* radians CBI2 */
-    beam_freq = 1000;          /* GHz */
-    beam_cutoff = 10*RPARCM; /* radians */
-    break;
-  case 4:
-    beam_fwhm = (9.0/60)*RPARCM*12/22;   /* radians ATCA */
-    beam_freq = 691.4;          /* GHz */
-    beam_cutoff = 1.0*RPARCM; /* radians */
-    break;
-  case 5:
-    beam_fwhm = (9.0/60)*RPARCM*12/25;   /* radians VLA */
-    beam_freq = 691.4;          /* GHz */
-    beam_cutoff = 1.0*RPARCM; /* radians */
-    break;
-  case 6:
-    beam_fwhm = 10.5*RPARCM;   /* radians SZA */
-    beam_freq = 30.9380;          /* GHz */
-    beam_cutoff = 20.0*RPARCM; /* radians */
-    break;
-
-  default:
-    printf("Telescope type not defined\n");
-    goToError();
-    break;
-  }
+        switch(telescope) {
+        case 1:
+                antenna_diameter = 1.4; /* CBI2 Antenna Diameter */
+                pb_factor = 1.22; /* FWHM Factor */
+                pb_cutoff = 90.0*RPARCM; /* radians */
+                break;
+        case 2:
+                antenna_diameter = 12.0; /* ALMA Antenna Diameter */
+                pb_factor = 1.13; /* FWHM Factor */
+                pb_cutoff = 1.0*RPARCM; /* radians */
+                break;
+        case 3:
+                antenna_diameter = 22.0; /* ATCA Antenna Diameter */
+                pb_factor = 1.22; /* FWHM Factor */
+                pb_cutoff = 1.0*RPARCM; /* radians */
+                break;
+        case 4:
+                antenna_diameter = 25.0; /* VLA Antenna Diameter */
+                pb_factor = 1.22; /* FWHM Factor */
+                pb_cutoff = 20.0*RPARCM; /* radians */
+                break;
+        case 5:
+                antenna_diameter = 3.5; /* SZA Antenna Diameter */
+                pb_factor = 1.22; /* FWHM Factor */
+                pb_cutoff = 20.0*RPARCM; /* radians */
+                break;
+        case 6:
+                antenna_diameter = 0.9; /* CBI Antenna Diameter */
+                pb_factor = 1.22; /* FWHM Factor */
+                pb_cutoff = 20.0*RPARCM; /* radians */
+                break;
+        default:
+                printf("Telescope type not defined\n");
+                goToError();
+                break;
+        }
 }
 
 
@@ -163,7 +162,8 @@ __host__ void print_help() {
   printf(	"   -i  --input            The name of the input file of visibilities(MS)\n");
   printf(	"   -o  --output           The name of the output file of residual visibilities(MS)\n");
   printf("    -I  --inputdat         The name of the input file of parameters\n");
-  printf("    -m  --modin            mod_in_0 FITS file\n");
+  printf("    -m  --I_nu_0           I_nu_0 Model input FITS file\n");
+  printf("    -a  --alpha            alpha model input FITS file\n");
   printf("    -r  --randoms          Percentage of data used when random sampling (Default = 1.0, optional)\n");
   printf("    -s  --select           If multigpu option is OFF, then select the GPU ID of the GPU you will work on. (Default = 0)\n");
   printf("    -c  --copyright        Shows copyright conditions\n");
@@ -198,7 +198,7 @@ __host__ Vars getOptions(int argc, char **argv) {
   variables.randoms = 1.0;
 
 	long next_op;
-	const char* const short_op = "hi:o:O:I:m:s:X:Y:V:r:";
+	const char* const short_op = "hi:o:O:I:m:s:X:Y:V:r:a:F:";
 
 	const struct option long_op[] = { //Flag for help, copyright and warranty
                                     {"help", 0, NULL, 'h' },
@@ -207,7 +207,8 @@ __host__ Vars getOptions(int argc, char **argv) {
                                     {"apply-noise", 0, &apply_noise, 1},
                                     /* These options don’t set a flag. */
                                     {"input", 1, NULL, 'i' }, {"output", 1, NULL, 'o'}, {"inputdat", 1, NULL, 'I'},
-                                    {"modin", 1, NULL, 'm' }, {"select", 1, NULL, 's'}, {"blockSizeX", 1, NULL, 'X'},
+                                    {"modin", 1, NULL, 'm' }, {"alpha", 1, NULL, 'a' }, {"nu_0", 1, NULL, 'F'},
+                                    {"select", 1, NULL, 's'}, {"blockSizeX", 1, NULL, 'X'},
                                     {"blockSizeY", 1, NULL, 'Y'}, {"blockSizeV", 1, NULL, 'V'}, {"random", 0, NULL, 'r'},
                                     { NULL, 0, NULL, 0 }};
 
@@ -253,11 +254,18 @@ __host__ Vars getOptions(int argc, char **argv) {
       variables.modin = (char*) malloc((strlen(optarg)+1)*sizeof(char));
     	strcpy(variables.modin, optarg);
     	break;
+    case 'a':
+      variables.alpha = (char*) malloc((strlen(optarg)+1)*sizeof(char));
+      strcpy(variables.alpha, optarg);
+      break;
     case 's':
       variables.select = atoi(optarg);
       break;
     case 'r':
       variables.randoms = atof(optarg);
+      break;
+    case 'F':
+      variables.nu_0 = atof(optarg);
       break;
     case 'X':
       variables.blockSizeX = atoi(optarg);
@@ -281,7 +289,7 @@ __host__ Vars getOptions(int argc, char **argv) {
 
   if(variables.blockSizeX == -1 && variables.blockSizeY == -1 && variables.blockSizeV == -1 ||
      strcmp(strip(variables.input, " "),"") == 0 && strcmp(strip(variables.output, " "),"") == 0 && strcmp(strip(variables.inputdat, " "),"") == 0 ||
-     strcmp(strip(variables.modin, " "),"") == 0 ) {
+     strcmp(strip(variables.modin, " "),"") == 0 || strcmp(strip(variables.alpha, " "),"") == 0) {
         print_help();
         exit(EXIT_FAILURE);
   }
@@ -314,33 +322,66 @@ __global__ void hermitianSymmetry(float *Ux, float *Vx, cufftComplex *Vo, float 
   }
 }
 
-
-
-__global__ void apply_beam(float beam_fwhm, float beam_freq, float beam_cutoff, cufftComplex *image, cufftComplex *fg_image, long N, float xobs, float yobs, float freq, float DELTAX, float DELTAY)
+__device__ float AiryDiskBeam(float distance, float lambda, float antenna_diameter, float pb_factor)
 {
-    int j = threadIdx.x + blockDim.x * blockIdx.x;
-    int i = threadIdx.y + blockDim.y * blockIdx.y;
+        float atten;
+        float r = pb_factor * lambda / antenna_diameter;
+        float bessel_arg = PI*distance/(r/RZ);
+        float bessel_func = j1f(bessel_arg);
+        if(distance == 0.0f) {
+                atten = 1.0f;
+        }else{
+                atten = 4.0f * (bessel_func/bessel_arg) * (bessel_func/bessel_arg);
+        }
+        return atten;
+}
 
+__device__ float GaussianBeam(float distance, float lambda, float antenna_diameter, float pb_factor)
+{
+        float fwhm = pb_factor * lambda / antenna_diameter;
+        float c = 4.0*logf(2.0);
+        float r = distance/fwhm;
+        float atten = expf(-c*r*r);
+        return atten;
+}
 
-    float dx = DELTAX * 60.0;
-    float dy = DELTAY * 60.0;
-    float x = (j - xobs) * dx;
-    float y = (i - yobs) * dy;
-    float arc = RPARCM*sqrtf(x*x+y*y);
-    float c = 4.0*logf(2.0);
-    float a = (beam_fwhm*beam_freq/(freq*1e-9));
-    float r = arc/a;
-    float atten = expf(-c*r*r);
+__device__ float attenuation(float antenna_diameter, float pb_factor, float pb_cutoff, float freq, float xobs, float yobs, float DELTAX, float DELTAY)
+{
 
-    if(arc <= beam_cutoff){
-      image[N*i+j].x = fg_image[N*i+j].x * atten;
-      image[N*i+j].y = 0.0;
-    }else{
-      image[N*i+j].x = 0.0;
-      image[N*i+j].y = 0.0;
-    }
+        int j = threadIdx.x + blockDim.x * blockIdx.x;
+        int i = threadIdx.y + blockDim.y * blockIdx.y;
 
+        float atten_result, atten;
 
+        int x0 = xobs;
+        int y0 = yobs;
+        float x = (j - x0) * DELTAX * RPDEG;
+        float y = (i - y0) * DELTAY * RPDEG;
+
+        float arc = sqrtf(x*x+y*y);
+        float lambda = LIGHTSPEED/freq;
+
+        atten = AiryDiskBeam(arc, lambda, antenna_diameter, pb_factor);
+
+        if(arc <= pb_cutoff) {
+                atten_result = atten;
+        }else{
+                atten_result = 0.0f;
+        }
+
+        return atten_result;
+}
+
+__global__ void apply_beam(float antenna_diameter, float pb_factor, float pb_cutoff, cufftComplex *image, long N, float xobs, float yobs, float freq, float DELTAX, float DELTAY)
+{
+        int j = threadIdx.x + blockDim.x * blockIdx.x;
+        int i = threadIdx.y + blockDim.y * blockIdx.y;
+
+        float atten = attenuation(antenna_diameter, pb_factor, pb_cutoff, freq, xobs, yobs, DELTAX, DELTAY);
+
+        image[N*i+j].x = image[N*i+j].x * atten;
+        //image[N*i+j].x = image[N*i+j].x * atten;
+        image[N*i+j].y = 0.0;
 }
 
 
@@ -453,8 +494,8 @@ __host__ void uvsim(cufftComplex *I)
     for(int f=0; f<data.nfields;f++){
       for(int i=0; i<data.total_frequencies;i++){
         if(fields[f].numVisibilitiesPerFreq[i] != 0){
-
-        	apply_beam<<<numBlocksNN, threadsPerBlockNN>>>(beam_fwhm, beam_freq, beam_cutoff, device_image, device_I, N, fields[f].global_xobs, fields[f].global_yobs, fields[f].visibilities[i].freq, DELTAX, DELTAY);
+          //__global__ void apply_beam(float antenna_diameter, float pb_factor, float pb_cutoff, cufftComplex *image, long N, float xobs, float yobs, float fg_scale, float freq, float DELTAX, float DELTAY)
+        	apply_beam<<<numBlocksNN, threadsPerBlockNN>>>(antenna_diameter, pb_factor, pb_cutoff, device_I, N, fields[f].global_xobs, fields[f].global_yobs, fields[f].visibilities[i].freq, DELTAX, DELTAY);
         	gpuErrchk(cudaDeviceSynchronize());
 
         	//FFT 2D
