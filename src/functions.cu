@@ -35,10 +35,11 @@ extern int numVisibilities, iterations, iterthreadsVectorNN, blocksVectorNN, crp
 status_mod_in, verbose_flag, t_telescope, multigpu, firstgpu, reg_term, apply_noise;
 
 extern cufftHandle plan1GPU;
-extern cufftComplex *device_I, *device_V, *device_image;
+extern float2 device_I;
+extern cufftComplex *device_I_nu, *device_V, *device_image;
 
 extern float *device_noise_image;
-extern float noise_jypix, fg_scale, DELTAX, DELTAY, deltau, deltav, random_probability;
+extern float noise_jypix, fg_scale, DELTAX, DELTAY, deltau, deltav, random_probability, nu_0;
 
 extern dim3 threadsPerBlockNN, numBlocksNN;
 
@@ -488,14 +489,41 @@ __global__ void vis_mod(cufftComplex *Vm, cufftComplex *Vo, cufftComplex *V, flo
 
 }
 
-__host__ void uvsim(cufftComplex *I)
+__global__ void calculateInu(cufftComplex *I_nu, float2* I, float nu, float nu_0, float MINPIX, float eta, long N, long M)
+{
+        int j = threadIdx.x + blockDim.x * blockIdx.x;
+        int i = threadIdx.y + blockDim.y * blockIdx.y;
+
+        float I_nu_0, alpha, nudiv_pow_alpha, nudiv;
+
+        nudiv = nu/nu_0;
+
+        I_nu_0 = I[N*i+j].x;
+        alpha = I[N*i+j].y;
+
+        nudiv_pow_alpha = powf(nudiv, alpha);
+
+        I_nu[N*i+j].x = I_nu_0 * nudiv_pow_alpha;
+
+        if(I_nu[N*i+j].x < -1.0*eta*MINPIX) {
+                I_nu[N*i+j].x = -1.0*eta*MINPIX;
+        }
+
+        I_nu[N*i+j].y = 0.0f;
+}
+
+__host__ void uvsim(float2 *I)
 {
 
     for(int f=0; f<data.nfields;f++){
       for(int i=0; i<data.total_frequencies;i++){
         if(fields[f].numVisibilitiesPerFreq[i] != 0){
-          //__global__ void apply_beam(float antenna_diameter, float pb_factor, float pb_cutoff, cufftComplex *image, long N, float xobs, float yobs, float fg_scale, float freq, float DELTAX, float DELTAY)
-        	apply_beam<<<numBlocksNN, threadsPerBlockNN>>>(antenna_diameter, pb_factor, pb_cutoff, device_I, N, fields[f].global_xobs, fields[f].global_yobs, fields[f].visibilities[i].freq, DELTAX, DELTAY);
+          gpuErrchk(cudaMemset(device_I_nu, 0, sizeof(cufftComplex)*M*N));
+
+          calculateInu<<<numBlocksNN, threadsPerBlockNN>>>(device_I_nu, I, fields[f].visibilities[i].freq, nu_0, 0.0, -1.0, M, N);
+          gpuErrchk(cudaDeviceSynchronize());
+
+        	apply_beam<<<numBlocksNN, threadsPerBlockNN>>>(antenna_diameter, pb_factor, pb_cutoff, device_I_nu, N, fields[f].global_xobs, fields[f].global_yobs, fields[f].visibilities[i].freq, DELTAX, DELTAY);
         	gpuErrchk(cudaDeviceSynchronize());
 
         	//FFT 2D

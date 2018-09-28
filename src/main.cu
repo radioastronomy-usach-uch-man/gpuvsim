@@ -37,23 +37,25 @@ int iter=0;
 
 cufftHandle plan1GPU;
 
-cufftComplex *device_I, *device_V, *device_image;
+float2 *device_I;
+
+cufftComplex *device_I_nu, *device_V, *device_image;
 
 float DELTAX, DELTAY, deltau, deltav, beam_noise, beam_bmaj;
 float beam_bmin, b_noise_aux, random_probability = 1.0;
-float noise_jypix, fg_scale, antenna_diameter, pb_factor, pb_cutoff;
+float noise_jypix, fg_scale, antenna_diameter, pb_factor, pb_cutoff, nu_0;
 
 dim3 threadsPerBlockNN;
 dim3 numBlocksNN;
 
-int threadsVectorReduceNN, blocksVectorReduceNN, crpix1, crpix2, verbose_flag = 0, apply_noise = 0, it_maximum, status_mod_in;
+int threadsVectorReduceNN, blocksVectorReduceNN, crpix1, crpix2, verbose_flag = 0, apply_noise = 0, it_maximum, status_mod_in, status_mod_in_alpha;
 int selected, t_telescope, reg_term;
 char *output;
 
 double ra, dec;
 
 freqData data;
-fitsfile *mod_in;
+fitsfile *mod_in, *mod_in_alpha;
 
 Field *fields;
 
@@ -98,6 +100,8 @@ __host__ int main(int argc, char **argv) {
 	char *msoutput = variables.output;
   char *inputdat = variables.inputdat;
 	char *modinput = variables.modin;
+  char *alphainput = variables.alpha;
+  nu_0 = variables.nu_0;
   selected = variables.select;
   int total_visibilities = 0;
   random_probability = variables.randoms;
@@ -109,7 +113,7 @@ __host__ int main(int argc, char **argv) {
   }
 
   canvasVariables canvas_vars = readCanvas(modinput, mod_in, b_noise_aux, status_mod_in, verbose_flag);
-
+  canvasVariables foo = readCanvas(alphainput, mod_in_alpha, b_noise_aux, status_mod_in_alpha, verbose_flag);
   M = canvas_vars.M;
   N = canvas_vars.N;
   DELTAX = canvas_vars.DELTAX;
@@ -257,13 +261,14 @@ __host__ int main(int argc, char **argv) {
   float *input_sim_alpha;
 
   readFITSImageValues(modinput, mod_in, input_sim, status_mod_in, M, N);
+  readFITSImageValues(alphainput, mod_in_alpha, input_sim_alpha, status_mod_in_alpha, M, N);
 
   int x = M-1;
   int y = N-1;
 	for(int i=0;i<M;i++){
 		for(int j=0;j<N;j++){
 			host_I[N*i+j].x = input_sim[N*y+x];
-			host_I[N*i+j].y = 0;
+			host_I[N*i+j].y = input_sim_alpha[N*y+x];
       x--;
 		}
     x=M-1;
@@ -281,10 +286,13 @@ __host__ int main(int argc, char **argv) {
 
   cudaSetDevice(selected);
 
-	gpuErrchk(cudaMalloc((void**)&device_I, sizeof(cufftComplex)*M*N));
-  gpuErrchk(cudaMemset(device_I, 0, sizeof(cufftComplex)*M*N));
+	gpuErrchk(cudaMalloc((void**)&device_I, sizeof(float2)*M*N));
+  gpuErrchk(cudaMemset(device_I, 0, sizeof(float2)*M*N));
 
-  gpuErrchk(cudaMemcpy2D(device_I, sizeof(cufftComplex), host_I, sizeof(cufftComplex), sizeof(cufftComplex), M*N, cudaMemcpyHostToDevice));
+  gpuErrchk(cudaMalloc((void**)&device_I_nu, sizeof(cufftComplex)*M*N));
+  gpuErrchk(cudaMemset(device_I_nu, 0, sizeof(cufftComplex)*M*N));
+
+  gpuErrchk(cudaMemcpy2D(device_I, sizeof(float2), host_I, sizeof(float2), sizeof(float2), M*N, cudaMemcpyHostToDevice));
 
 	gpuErrchk(cudaMemset(device_V, 0, sizeof(cufftComplex)*M*N));
 	gpuErrchk(cudaMemset(device_image, 0, sizeof(cufftComplex)*M*N));
