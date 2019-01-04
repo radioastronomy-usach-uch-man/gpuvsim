@@ -7,6 +7,7 @@
 #include <tables/Tables/ScalarColumn.h>
 #include <tables/Tables/ArrayColumn.h>
 #include <casa/Arrays/Vector.h>
+#include <casa/Arrays/Matrix.h>
 #include <casa/Arrays/Slicer.h>
 #include <casa/Arrays/ArrayMath.h>
 #include <tables/Tables/TableParse.h>
@@ -43,6 +44,10 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
    }
 }
 
+//Included variable from Makefile using "make NEWCASA=1"
+#ifdef NEWCASA
+namespace casa = casacore;
+#endif
 
 typedef struct freqData{
   int n_internal_frequencies;
@@ -51,6 +56,7 @@ typedef struct freqData{
   int nfields;
   int nsamples;
   int nstokes;
+  int max_number_visibilities_in_channel;
 }freqData;
 
 typedef struct observedVisibilities{

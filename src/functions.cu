@@ -36,7 +36,7 @@ status_mod_in, verbose_flag, t_telescope, multigpu, firstgpu, reg_term, apply_no
 
 extern cufftHandle plan1GPU;
 extern float2 device_I;
-extern cufftComplex *device_I_nu, *device_V, *device_image;
+extern cufftComplex *device_I_nu, *device_V;
 
 extern float *device_noise_image;
 extern float noise_jypix, fg_scale, DELTAX, DELTAY, deltau, deltav, random_probability, nu_0;
@@ -505,9 +505,9 @@ __global__ void calculateInu(cufftComplex *I_nu, float2* I, float nu, float nu_0
 
         I_nu[N*i+j].x = I_nu_0 * nudiv_pow_alpha;
 
-        if(I_nu[N*i+j].x < -1.0*eta*MINPIX) {
-                I_nu[N*i+j].x = -1.0*eta*MINPIX;
-        }
+       // if(I_nu[N*i+j].x < -1.0*eta*MINPIX) {
+       //        I_nu[N*i+j].x = -1.0*eta*MINPIX;
+       //}
 
         I_nu[N*i+j].y = 0.0f;
 }
@@ -527,7 +527,7 @@ __host__ void uvsim(float2 *I)
         	gpuErrchk(cudaDeviceSynchronize());
 
         	//FFT 2D
-        	if ((cufftExecC2C(plan1GPU, (cufftComplex*)device_image, (cufftComplex*)device_V, CUFFT_FORWARD)) != CUFFT_SUCCESS) {
+        	if ((cufftExecC2C(plan1GPU, (cufftComplex*)device_I_nu, (cufftComplex*)device_V, CUFFT_FORWARD)) != CUFFT_SUCCESS) {
         		printf("CUFFT exec error\n");
         		goToError();
         	}

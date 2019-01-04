@@ -39,7 +39,7 @@ cufftHandle plan1GPU;
 
 float2 *device_I;
 
-cufftComplex *device_I_nu, *device_V, *device_image;
+cufftComplex *device_I_nu, *device_V;
 
 float DELTAX, DELTAY, deltau, deltav, beam_noise, beam_bmaj;
 float beam_bmin, b_noise_aux, random_probability = 1.0;
@@ -282,7 +282,6 @@ __host__ int main(int argc, char **argv) {
 
   cudaSetDevice(selected);
 	gpuErrchk(cudaMalloc((void**)&device_V, sizeof(cufftComplex)*M*N));
-	gpuErrchk(cudaMalloc((void**)&device_image, sizeof(cufftComplex)*M*N));
 
   cudaSetDevice(selected);
 
@@ -295,7 +294,6 @@ __host__ int main(int argc, char **argv) {
   gpuErrchk(cudaMemcpy2D(device_I, sizeof(float2), host_I, sizeof(float2), sizeof(float2), M*N, cudaMemcpyHostToDevice));
 
 	gpuErrchk(cudaMemset(device_V, 0, sizeof(cufftComplex)*M*N));
-	gpuErrchk(cudaMemset(device_image, 0, sizeof(cufftComplex)*M*N));
 
   cudaSetDevice(selected);
 	if ((cufftPlan2d(&plan1GPU, N, M, CUFFT_C2C))!= CUFFT_SUCCESS) {
@@ -363,7 +361,6 @@ __host__ int main(int argc, char **argv) {
 	cudaFree(device_I);
 
 	cudaFree(device_V);
-	cudaFree(device_image);
 
 	free(host_I);
 	free(msinput);
