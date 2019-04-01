@@ -18,7 +18,7 @@
 #include <ms/MeasurementSets/MSMainColumns.h>
 #include <tables/Tables/TableDesc.h>
 #include <ms/MeasurementSets/MSAntennaColumns.h>
-#include "fitsio.h"
+#include <fitsio.h>
 #include "rngs.cuh"
 #include "rvgs.cuh"
 #include <cufft.h>

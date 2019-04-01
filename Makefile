@@ -4,7 +4,7 @@
 CUFFTFLAG = -lcufft
 CFLAGS = -c -w -O3 -Xptxas -O3
 INC_DIRS = -Iinclude -I/usr/local/include/casacore/
-CFFLAG = -Llib -lcfitsio -lm -lcasa_casa -lcasa_tables -lcasa_ms -lcasa_measures
+CFFLAG = -lcfitsio -lm -lcasa_casa -lcasa_tables -lcasa_ms -lcasa_measures
 LDFLAGS = -lcuda -lcudart
 FOPENFLAG = -Xcompiler -fopenmp -lgomp
 CCFLAG = -lstdc++
@@ -30,7 +30,7 @@ ARCHFLAG += -gencode arch=compute_$(HIGHEST_SM),code=compute_$(HIGHEST_SM)
 endif
 endif
 
-main:	build/main.o cfits build/MSFITSIO.o build/functions.o build/directioncosines.o build/rngs.o build/rvgs.o
+main:	build/main.o build/MSFITSIO.o build/functions.o build/directioncosines.o build/rngs.o build/rvgs.o
 	@ echo "Linking GPUVSIM"
 	@ mkdir -p bin
 	@ nvcc build/*.o -o bin/gpuvsim $(LDFLAGS) $(CFFLAG) $(FOPENFLAG) $(CUFFTFLAG) $(ARCHFLAG) $(CCFLAG)
@@ -61,18 +61,7 @@ build/rvgs.o: src/rvgs.cu
 	@ echo "Building Random number generator 2"
 	@ nvcc $(CFLAGS) $(INC_DIRS) src/rvgs.cu -o build/rvgs.o $(LDFLAGS) $(CFFLAG) $(ARCHFLAG)
 
-cfits:
-	@ mkdir -p lib
-	@ cd cfitsio; make; cp libcfitsio.a ../lib/.
-
 clean:
 	@ echo "Cleaning folders.."
 	@ rm -rf build/*
 	@ rm -rf bin/*
-	@ rm -f lib/*.a
-	@ cd cfitsio; make clean
-	@ cd cfitsio; make distclean
-
-conf:
-	@ echo "Doing configure..."
-	@ ./configure
