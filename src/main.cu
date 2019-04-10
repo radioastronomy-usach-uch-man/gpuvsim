@@ -106,6 +106,27 @@ __host__ int main(int argc, char **argv) {
   int total_visibilities = 0;
   random_probability = variables.randoms;
 
+  int num_gpus;
+  cudaGetDeviceCount(&num_gpus);
+
+  if(selected > num_gpus || selected < 0) {
+          printf("ERROR. THE SELECTED GPU DOESN'T EXIST\n");
+          exit(-1);
+  }else{
+    cudaDeviceProp dprop;
+    cudaGetDeviceProperties(&dprop, selected);
+    if(variables.blockSizeX*variables.blockSizeY >= dprop.maxThreadsPerBlock || variables.blockSizeV >= dprop.maxThreadsPerBlock){
+        printf("ERROR. The maximum threads per block cannot be greater than %d\n", dprop.maxThreadsPerBlock);
+        exit(-1);
+    }
+
+    if(variables.blockSizeX >= dprop.maxThreadsDim[0] || variables.blockSizeY >= dprop.maxThreadsDim[1] || variables.blockSizeV >= dprop.maxThreadsDim[0]){
+      printf("ERROR. The size of the blocksize cannot exceed X: %d Y: %d Z: %d\n", dprop.maxThreadsDim[0], dprop.maxThreadsDim[1], dprop.maxThreadsDim[2]);
+      exit(-1);
+    }
+  }
+
+
   readInputDat(inputdat);
   init_beam(t_telescope);
   if(verbose_flag){
