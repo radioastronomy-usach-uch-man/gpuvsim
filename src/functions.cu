@@ -356,6 +356,7 @@ __device__ float attenuation(float antenna_diameter, float pb_factor, float pb_c
 
         int x0 = xobs;
         int y0 = yobs;
+        
         float x = (j - x0) * DELTAX * RPDEG;
         float y = (i - y0) * DELTAY * RPDEG;
 

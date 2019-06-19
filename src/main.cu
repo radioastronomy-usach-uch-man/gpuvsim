@@ -265,6 +265,7 @@ __host__ int main(int argc, char **argv) {
 		fields[f].global_xobs = (crpix1 - 1.0) - (lobs/deltax) + 1.0;
 		fields[f].global_yobs = (crpix2 - 1.0) - (mobs/deltay) - 1.0;
 	}else{
+  	    printf("Center x,y are the same\n");
 		fields[f].global_xobs = (crpix1 - 1.0) - (lobs/deltax) - 1.0;
 		fields[f].global_yobs = (crpix2 - 1.0) - (mobs/deltay) - 1.0;
 	}
