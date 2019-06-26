@@ -39,12 +39,12 @@ extern float2 device_I;
 extern cufftComplex *device_I_nu, *device_V;
 
 extern float *device_noise_image;
-extern float noise_jypix, fg_scale, DELTAX, DELTAY, deltau, deltav, random_probability, nu_0;
+extern float noise_jypix, fg_scale, random_probability, nu_0;
 
 extern dim3 threadsPerBlockNN, numBlocksNN;
 
 extern float beam_noise, beam_bmaj, beam_bmin, b_noise_aux, antenna_diameter, pb_factor, pb_cutoff;
-extern double ra, dec;
+extern double ra, dec, DELTAX, DELTAY, deltau, deltav;
 
 extern freqData data;
 
@@ -165,6 +165,7 @@ __host__ void print_help() {
   printf("    -I  --inputdat         The name of the input file of parameters\n");
   printf("    -m  --I_nu_0           I_nu_0 Model input FITS file\n");
   printf("    -a  --alpha            alpha model input FITS file\n");
+  printf("    -F  --nu_0             Reference frequency for MFS UV simulation\n");
   printf("    -r  --randoms          Percentage of data used when random sampling (Default = 1.0, optional)\n");
   printf("    -s  --select           If multigpu option is OFF, then select the GPU ID of the GPU you will work on. (Default = 0)\n");
   printf("    -c  --copyright        Shows copyright conditions\n");
@@ -197,6 +198,7 @@ __host__ Vars getOptions(int argc, char **argv) {
   variables.blockSizeY = -1;
   variables.blockSizeV = -1;
   variables.randoms = 1.0;
+  variables.nu_0 = 0.0f;
 
 	long next_op;
 	const char* const short_op = "hi:o:O:I:m:s:X:Y:V:r:a:F:";
@@ -225,67 +227,67 @@ __host__ Vars getOptions(int argc, char **argv) {
 		if (next_op == -1) {
 			break;
 		}
-
 		switch (next_op) {
-    case 0:
-      /* If this option set a flag, do nothing else now. */
-      if (long_op[option_index].flag != 0)
-        break;
-        printf ("option %s", long_op[option_index].name);
-      if (optarg)
-        printf (" with arg %s", optarg);
-        printf ("\n");
-        break;
-		case 'h':
-			print_help();
-			exit(EXIT_SUCCESS);
-		case 'i':
-      variables.input = (char*) malloc((strlen(optarg)+1)*sizeof(char));
-			strcpy(variables.input, optarg);
-			break;
-    case 'o':
-      variables.output = (char*) malloc((strlen(optarg)+1)*sizeof(char));
-  		strcpy(variables.output, optarg);
-  		break;
-    case 'I':
-      variables.inputdat = (char*) malloc((strlen(optarg)+1)*sizeof(char));
-      strcpy(variables.inputdat, optarg);
-      break;
-    case 'm':
-      variables.modin = (char*) malloc((strlen(optarg)+1)*sizeof(char));
-    	strcpy(variables.modin, optarg);
-    	break;
-    case 'a':
-      variables.alpha = (char*) malloc((strlen(optarg)+1)*sizeof(char));
-      strcpy(variables.alpha, optarg);
-      break;
-    case 's':
-      variables.select = atoi(optarg);
-      break;
-    case 'r':
-      variables.randoms = atof(optarg);
-      break;
-    case 'F':
-      variables.nu_0 = atof(optarg);
-      break;
-    case 'X':
-      variables.blockSizeX = atoi(optarg);
-      break;
-    case 'Y':
-      variables.blockSizeY = atoi(optarg);
-      break;
-    case 'V':
-      variables.blockSizeV = atoi(optarg);
-      break;
-		case '?':
-			print_help();
-			exit(EXIT_FAILURE);
-		case -1:
-			break;
-		default:
-      print_help();
-			exit(EXIT_FAILURE);
-		}
+            case 0:
+              /* If this option set a flag, do nothing else now. */
+              if (long_op[option_index].flag != 0)
+                break;
+                printf ("option %s", long_op[option_index].name);
+              if (optarg)
+                printf (" with arg %s", optarg);
+                printf ("\n");
+                break;
+
+             case 'h':
+                print_help();
+                exit(EXIT_SUCCESS);
+            case 'i':
+                variables.input = (char*) malloc((strlen(optarg)+1)*sizeof(char));
+                strcpy(variables.input, optarg);
+                break;
+            case 'o':
+              variables.output = (char*) malloc((strlen(optarg)+1)*sizeof(char));
+                strcpy(variables.output, optarg);
+                break;
+            case 'I':
+              variables.inputdat = (char*) malloc((strlen(optarg)+1)*sizeof(char));
+              strcpy(variables.inputdat, optarg);
+              break;
+            case 'm':
+              variables.modin = (char*) malloc((strlen(optarg)+1)*sizeof(char));
+                strcpy(variables.modin, optarg);
+                break;
+            case 'a':
+              variables.alpha = (char*) malloc((strlen(optarg)+1)*sizeof(char));
+              strcpy(variables.alpha, optarg);
+              break;
+            case 's':
+              variables.select = atoi(optarg);
+              break;
+            case 'r':
+              variables.randoms = atof(optarg);
+              break;
+            case 'F':
+              variables.nu_0 = atof(optarg);
+              break;
+            case 'X':
+              variables.blockSizeX = atoi(optarg);
+              break;
+            case 'Y':
+              variables.blockSizeY = atoi(optarg);
+              break;
+            case 'V':
+              variables.blockSizeV = atoi(optarg);
+              break;
+                case '?':
+                    print_help();
+                    exit(EXIT_FAILURE);
+                case -1:
+                    break;
+                default:
+                    print_help();
+                    exit(EXIT_FAILURE);
+                }
 	}
 
   if(variables.blockSizeX == -1 && variables.blockSizeY == -1 && variables.blockSizeV == -1 ||
@@ -308,18 +310,20 @@ __host__ Vars getOptions(int argc, char **argv) {
 	return variables;
 }
 
-__global__ void hermitianSymmetry(float *Ux, float *Vx, cufftComplex *Vo, float freq, int numVisibilities)
+__global__ void hermitianSymmetry(double3 *UVW, cufftComplex *Vo, float freq, int numVisibilities)
 {
   int i = threadIdx.x + blockDim.x * blockIdx.x;
 
   if (i < numVisibilities){
-      if(Ux[i] < 0.0){
-        Ux[i] *= -1.0;
-        Vx[i] *= -1.0;
+      if(UVW[i].x < 0.0){
+        UVW[i].x *= -1.0;
+        UVW[i].y *= -1.0;
         Vo[i].y *= -1.0;
       }
-      Ux[i] = (Ux[i] * freq) / LIGHTSPEED;
-      Vx[i] = (Vx[i] * freq) / LIGHTSPEED;
+
+      UVW[i].x *= freq / LIGHTSPEED;
+      UVW[i].y *= freq / LIGHTSPEED;
+      UVW[i].z *= freq / LIGHTSPEED;
   }
 }
 
@@ -346,7 +350,7 @@ __device__ float GaussianBeam(float distance, float lambda, float antenna_diamet
         return atten;
 }
 
-__device__ float attenuation(float antenna_diameter, float pb_factor, float pb_cutoff, float freq, float xobs, float yobs, float DELTAX, float DELTAY)
+__device__ float attenuation(float antenna_diameter, float pb_factor, float pb_cutoff, float freq, float xobs, float yobs, double DELTAX, double DELTAY)
 {
 
         int j = threadIdx.x + blockDim.x * blockIdx.x;
@@ -356,9 +360,9 @@ __device__ float attenuation(float antenna_diameter, float pb_factor, float pb_c
 
         int x0 = xobs;
         int y0 = yobs;
-        
-        float x = (j - x0) * DELTAX * RPDEG;
-        float y = (i - y0) * DELTAY * RPDEG;
+
+        float x = (j - x0) * DELTAX * RPDEG_D;
+        float y = (i - y0) * DELTAY * RPDEG_D;
 
         float arc = sqrtf(x*x+y*y);
         float lambda = LIGHTSPEED/freq;
@@ -374,7 +378,7 @@ __device__ float attenuation(float antenna_diameter, float pb_factor, float pb_c
         return atten_result;
 }
 
-__global__ void apply_beam(float antenna_diameter, float pb_factor, float pb_cutoff, cufftComplex *image, long N, float xobs, float yobs, float freq, float DELTAX, float DELTAY)
+__global__ void apply_beam(float antenna_diameter, float pb_factor, float pb_cutoff, cufftComplex *image, long N, float xobs, float yobs, float freq, double DELTAX, double DELTAY)
 {
         int j = threadIdx.x + blockDim.x * blockIdx.x;
         int i = threadIdx.y + blockDim.y * blockIdx.y;
@@ -431,62 +435,60 @@ __global__ void phase_rotate(cufftComplex *data, long M, long N, float xphs, flo
 /*
  * Interpolate in the visibility array to find the visibility at (u,v);
  */
-__global__ void vis_mod(cufftComplex *Vm, cufftComplex *Vo, cufftComplex *V, float *Ux, float *Vx, float deltau, float deltav, long numVisibilities, long N)
+__global__ void vis_mod(cufftComplex *Vm, cufftComplex *V, double3 *UVW, float *weight, double deltau, double deltav, long numVisibilities, long N)
 {
-  int i = threadIdx.x + blockDim.x * blockIdx.x;
-  long i1, i2, j1, j2;
-  float du, dv, u, v;
-  float v11, v12, v21, v22;
-  float Zreal;
-  float Zimag;
+    int i = threadIdx.x + blockDim.x * blockIdx.x;
+    int i1, i2, j1, j2;
+    float du, dv, u, v;
+    cufftComplex v11, v12, v21, v22;
+    float Zreal;
+    float Zimag;
 
-  if (i < numVisibilities){
+    if (i < numVisibilities) {
 
-    u = Ux[i]/deltau;
-    v = Vx[i]/deltav;
+        u = UVW[i].x/fabs(deltau);
+        v = UVW[i].y/deltav;
 
-    if (fabsf(u) > (N/2)+0.5 || fabsf(v) > (N/2)+0.5) {
-      printf("Error in residual: u,v = %f,%f\n", u, v);
-      asm("trap;");
+        if (fabsf(u) <= (N/2)+0.5 && fabsf(v) <= (N/2)+0.5) {
+
+            if(u < 0.0)
+                u = roundf(u+N);
+
+
+            if(v < 0.0)
+                v = roundf(v+N);
+
+
+            i1 = (int)u;
+            i2 = (i1+1)%N;
+            du = u - i1;
+
+            j1 = (int)v;
+            j2 = (j1+1)%N;
+            dv = v - j1;
+
+            if (i1 >= 0 && i1 < N && i2 >= 0 && i2 < N && j1 >= 0 && j1 < N && j2 >= 0 && j2 < N) {
+                /* Bilinear interpolation */
+                v11 = V[N*j1 + i1]; /* [i1, j1] */
+                v12 = V[N*j2 + i1]; /* [i1, j2] */
+                v21 = V[N*j1 + i2]; /* [i2, j1] */
+                v22 = V[N*j2 + i2]; /* [i2, j2] */
+
+                Zreal = (1-du)*(1-dv)*v11.x + (1-du)*dv*v12.x + du*(1-dv)*v21.x + du*dv*v22.x;
+                Zimag = (1-du)*(1-dv)*v11.y + (1-du)*dv*v12.y + du*(1-dv)*v21.y + du*dv*v22.y;
+
+                Vm[i].x = Zreal;
+                Vm[i].y = Zimag;
+            }else{
+                weight[i] = 0.0f;
+            }
+        }else{
+            //Vm[i].x = 0.0f;
+            //Vm[i].y = 0.0f;
+            weight[i] = 0.0f;
+        }
+
     }
-
-    if(u < 0.0){
-      u = N + u;
-    }
-
-    if(v < 0.0){
-      v = N + v;
-    }
-
-    i1 = u;
-    i2 = (i1+1)%N;
-    du = u - i1;
-    j1 = v;
-    j2 = (j1+1)%N;
-    dv = v - j1;
-
-    if (i1 < 0 || i1 > N || j1 < 0 || j2 > N) {
-      printf("Error in residual: u,v = %f,%f, %ld,%ld, %ld,%ld\n", u, v, i1, i2, j1, j2);
-      asm("trap;");
-    }
-
-    /* Bilinear interpolation: real part */
-    v11 = V[N*j1 + i1].x; /* [i1, j1] */
-    v12 = V[N*j2 + i1].x; /* [i1, j2] */
-    v21 = V[N*j1 + i2].x; /* [i2, j1] */
-    v22 = V[N*j2 + i2].x; /* [i2, j2] */
-    Zreal = (1-du)*(1-dv)*v11 + (1-du)*dv*v12 + du*(1-dv)*v21 + du*dv*v22;
-    /* Bilinear interpolation: imaginary part */
-    v11 = V[N*j1 + i1].y; /* [i1, j1] */
-    v12 = V[N*j2 + i1].y; /* [i1, j2] */
-    v21 = V[N*j1 + i2].y; /* [i2, j1] */
-    v22 = V[N*j2 + i2].y; /* [i2, j2] */
-    Zimag = (1-du)*(1-dv)*v11 + (1-du)*dv*v12 + du*(1-dv)*v21 + du*dv*v22;
-
-    Vm[i].x = Zreal;
-    Vm[i].y = Zimag;
-
-  }
 
 }
 
@@ -524,7 +526,7 @@ __host__ void uvsim(float2 *I)
           calculateInu<<<numBlocksNN, threadsPerBlockNN>>>(device_I_nu, I, fields[f].visibilities[i].freq, nu_0, 0.0, -1.0, M, N);
           gpuErrchk(cudaDeviceSynchronize());
 
-        	apply_beam<<<numBlocksNN, threadsPerBlockNN>>>(antenna_diameter, pb_factor, pb_cutoff, device_I_nu, N, fields[f].global_xobs, fields[f].global_yobs, fields[f].visibilities[i].freq, DELTAX, DELTAY);
+        	apply_beam<<<numBlocksNN, threadsPerBlockNN>>>(antenna_diameter, pb_factor, pb_cutoff, device_I_nu, N, fields[f].ref_xobs, fields[f].ref_yobs, fields[f].visibilities[i].freq, DELTAX, DELTAY);
         	gpuErrchk(cudaDeviceSynchronize());
 
         	//FFT 2D
@@ -535,12 +537,12 @@ __host__ void uvsim(float2 *I)
         	gpuErrchk(cudaDeviceSynchronize());
 
           //PHASE_ROTATE
-          phase_rotate<<<numBlocksNN, threadsPerBlockNN>>>(device_V, M, N, fields[f].global_xobs, fields[f].global_yobs);
-        	gpuErrchk(cudaDeviceSynchronize());
+          phase_rotate<<<numBlocksNN, threadsPerBlockNN>>>(device_V, M, N, fields[f].phs_xobs, fields[f].phs_yobs);
+          gpuErrchk(cudaDeviceSynchronize());
 
           //RESIDUAL CALCULATION
-          vis_mod<<<fields[f].visibilities[i].numBlocksUV, fields[f].visibilities[i].threadsPerBlockUV>>>(fields[f].device_visibilities[i].Vm, fields[f].device_visibilities[i].Vo, device_V, fields[f].device_visibilities[i].u, fields[f].device_visibilities[i].v, deltau, deltav, fields[f].numVisibilitiesPerFreq[i], N);
-        	gpuErrchk(cudaDeviceSynchronize());
+          vis_mod<<<fields[f].visibilities[i].numBlocksUV, fields[f].visibilities[i].threadsPerBlockUV>>>(fields[f].device_visibilities[i].Vm, fields[f].device_visibilities[i].Vo, device_V, fields[f].device_visibilities[i].uvw, deltau, deltav, fields[f].numVisibilitiesPerFreq[i], N);
+          gpuErrchk(cudaDeviceSynchronize());
 
         }
       }

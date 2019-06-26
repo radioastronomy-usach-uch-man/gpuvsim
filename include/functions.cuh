@@ -67,7 +67,7 @@ __host__ char *strip(const char *string, const char *chars);
 __host__ Vars getOptions(int argc, char **argv);
 __host__ void uvsim(cufftComplex *I);
 
-__global__ void hermitianSymmetry(float *Ux, float *Vx, cufftComplex *Vo, float freq, int numVisibilities);
-__global__ void apply_beam(float antenna_diameter, float pb_factor, float pb_cutoff, cufftComplex *image, long N, float xobs, float yobs, float freq, float DELTAX, float DELTAY);
+__global__ void hermitianSymmetry(double3 *UVW, cufftComplex *Vo, float freq, int numVisibilities);
+__global__ void apply_beam(float antenna_diameter, float pb_factor, float pb_cutoff, cufftComplex *image, long N, float xobs, float yobs, float freq, double DELTAX, double DELTAY);
 __global__ void phase_rotate(cufftComplex *data, long M, long N, float xphs, float yphs);
-__global__ void vis_mod(cufftComplex *Vm, cufftComplex *Vo, cufftComplex *V, float *Ux, float *Vx, float deltau, float deltav, long numVisibilities, long N);
+__global__ void vis_mod(cufftComplex *Vm, cufftComplex *Vo, cufftComplex *V, double3 *Vx, double deltau, double deltav, long numVisibilities, long N);
