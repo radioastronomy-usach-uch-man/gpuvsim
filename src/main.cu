@@ -103,6 +103,8 @@ __host__ int main(int argc, char **argv) {
   char *alphainput = variables.alpha;
   apply_noise = variables.noise;
   nu_0 = variables.nu_0;
+  if(verbose_flag)
+    printf("nu_0: %f\n", nu_0);
   selected = variables.select;
   int total_visibilities = 0;
   random_probability = variables.randoms;

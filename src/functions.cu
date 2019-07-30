@@ -198,7 +198,7 @@ __host__ Vars getOptions(int argc, char **argv) {
   variables.blockSizeY = -1;
   variables.blockSizeV = -1;
   variables.randoms = 1.0;
-  variables.nu_0 = 0.0f;
+  variables.nu_0 = 1.0f;
   variables.noise = 0.0;
 
 	long next_op;
@@ -211,8 +211,8 @@ __host__ Vars getOptions(int argc, char **argv) {
                                     /* These options don’t set a flag. */
                                     {"input", 1, NULL, 'i' }, {"output", 1, NULL, 'o'}, {"inputdat", 1, NULL, 'I'},
                                     {"modin", 1, NULL, 'm' }, {"alpha", 1, NULL, 'a' }, {"nu_0", 1, NULL, 'F'},
-                                    {"select", 1, NULL, 's'}, {"blockSizeX", 1, NULL, 'X'}, {"apply-noise", 0, NULL, 'n'},
-                                    {"blockSizeY", 1, NULL, 'Y'}, {"blockSizeV", 1, NULL, 'V'}, {"random", 0, NULL, 'r'},
+                                    {"select", 1, NULL, 's'}, {"blockSizeX", 1, NULL, 'X'}, {"apply-noise", 1, NULL, 'n'},
+                                    {"blockSizeY", 1, NULL, 'Y'}, {"blockSizeV", 1, NULL, 'V'}, {"random", 1, NULL, 'r'},
                                     { NULL, 0, NULL, 0 }};
 
 	if (argc == 1) {
