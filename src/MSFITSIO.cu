@@ -6,18 +6,18 @@ __host__ freqData countVisibilities(char * MS_name, Field *&fields)
         string dir = MS_name;
         char *query;
 
-        casa::Vector<double> pointing_ref;
-        casa::Vector<double> pointing_phs;
-        casa::Table main_tab(dir);
-        casa::Table field_tab(main_tab.keywordSet().asTable("FIELD"));
-        casa::Table spectral_window_tab(main_tab.keywordSet().asTable("SPECTRAL_WINDOW"));
-        casa::Table polarization_tab(main_tab.keywordSet().asTable("POLARIZATION"));
+        casacore::Vector<double> pointing_ref;
+        casacore::Vector<double> pointing_phs;
+        casacore::Table main_tab(dir);
+        casacore::Table field_tab(main_tab.keywordSet().asTable("FIELD"));
+        casacore::Table spectral_window_tab(main_tab.keywordSet().asTable("SPECTRAL_WINDOW"));
+        casacore::Table polarization_tab(main_tab.keywordSet().asTable("POLARIZATION"));
         freqsAndVisibilities.nfields = field_tab.nrow();
-        casa::ROTableRow field_row(field_tab, casa::stringToVector("REFERENCE_DIR,PHASE_DIR"));
+        casacore::ROTableRow field_row(field_tab, casacore::stringToVector("REFERENCE_DIR,PHASE_DIR"));
 
         fields = (Field*)malloc(freqsAndVisibilities.nfields*sizeof(Field));
         for(int f=0; f<freqsAndVisibilities.nfields; f++) {
-                const casa::TableRecord &values = field_row.get(f);
+                const casacore::TableRecord &values = field_row.get(f);
                 pointing_ref = values.asArrayDouble("REFERENCE_DIR");
                 pointing_phs = values.asArrayDouble("PHASE_DIR");
                 fields[f].ref_ra = pointing_ref[0];
@@ -33,11 +33,11 @@ __host__ freqData countVisibilities(char * MS_name, Field *&fields)
                 exit(-1);
         }
 
-        casa::ROArrayColumn<casa::Double> chan_freq_col(spectral_window_tab,"CHAN_FREQ"); //NUMBER OF SPW
+        casacore::ROArrayColumn<casacore::Double> chan_freq_col(spectral_window_tab,"CHAN_FREQ"); //NUMBER OF SPW
         freqsAndVisibilities.n_internal_frequencies = spectral_window_tab.nrow();
 
         freqsAndVisibilities.channels = (int*)malloc(freqsAndVisibilities.n_internal_frequencies*sizeof(int));
-        casa::ROScalarColumn<casa::Int> n_chan_freq(spectral_window_tab,"NUM_CHAN");
+        casacore::ROScalarColumn<casacore::Int> n_chan_freq(spectral_window_tab,"NUM_CHAN");
         for(int i = 0; i < freqsAndVisibilities.n_internal_frequencies; i++) {
                 freqsAndVisibilities.channels[i] = n_chan_freq(i);
         }
@@ -59,11 +59,11 @@ __host__ freqData countVisibilities(char * MS_name, Field *&fields)
                 }
         }
 
-        casa::ROScalarColumn<casa::Int> n_corr(polarization_tab,"NUM_CORR");
+        casacore::ROScalarColumn<casacore::Int> n_corr(polarization_tab,"NUM_CORR");
         freqsAndVisibilities.nstokes=n_corr(0);
 
-        casa::Vector<float> weights;
-        casa::Matrix<casa::Bool> flagCol;
+        casacore::Vector<float> weights;
+        casacore::Matrix<casacore::Bool> flagCol;
 
         bool flag;
         int counter;
@@ -79,10 +79,10 @@ __host__ freqData countVisibilities(char * MS_name, Field *&fields)
                         query = (char*) malloc(needed*sizeof(char));
                         snprintf(query, needed, "select * from %s where DATA_DESC_ID=%d and FIELD_ID=%d and FLAG_ROW=FALSE", MS_name, i,f);
 
-                        casa::Table query_tab = casa::tableCommand(query);
+                        casacore::Table query_tab = casacore::tableCommand(query);
 
-                        casa::ROArrayColumn<float> weight_col(query_tab,"WEIGHT");
-                        casa::ROArrayColumn<bool> flag_data_col(query_tab,"FLAG");
+                        casacore::ROArrayColumn<float> weight_col(query_tab,"WEIGHT");
+                        casacore::ROArrayColumn<bool> flag_data_col(query_tab,"FLAG");
 
                         for (int k=0; k < query_tab.nrow(); k++) {
                                 flagCol=flag_data_col(k);
@@ -182,20 +182,20 @@ __host__ void readSubsampledMS(char *MS_name, Field *fields, freqData data, floa
         long c;
         char *query;
         string dir = MS_name;
-        casa::Table main_tab(dir);
-        casa::Table spectral_window_tab(main_tab.keywordSet().asTable("SPECTRAL_WINDOW"));
-        casa::Table polarization_tab(main_tab.keywordSet().asTable("POLARIZATION"));
+        casacore::Table main_tab(dir);
+        casacore::Table spectral_window_tab(main_tab.keywordSet().asTable("SPECTRAL_WINDOW"));
+        casacore::Table polarization_tab(main_tab.keywordSet().asTable("POLARIZATION"));
 
-        casa::ROArrayColumn<casa::Int> correlation_col(polarization_tab,"CORR_TYPE");
-        casa::Vector<int> polarizations;
+        casacore::ROArrayColumn<casacore::Int> correlation_col(polarization_tab,"CORR_TYPE");
+        casacore::Vector<int> polarizations;
         polarizations=correlation_col(0);
 
-        casa::ROArrayColumn<casa::Double> chan_freq_col(spectral_window_tab,"CHAN_FREQ");
+        casacore::ROArrayColumn<casacore::Double> chan_freq_col(spectral_window_tab,"CHAN_FREQ");
 
-        casa::Vector<float> weights;
-        casa::Vector<double> uvw;
-        casa::Matrix<casa::Complex> dataCol;
-        casa::Matrix<casa::Bool> flagCol;
+        casacore::Vector<float> weights;
+        casacore::Vector<double> uvw;
+        casacore::Matrix<casacore::Complex> dataCol;
+        casacore::Matrix<casacore::Bool> flagCol;
 
         bool flag;
         size_t needed;
@@ -216,12 +216,12 @@ __host__ void readSubsampledMS(char *MS_name, Field *fields, freqData data, floa
                         query = (char*) malloc(needed*sizeof(char));
                         snprintf(query, needed, "select * from %s where DATA_DESC_ID=%d and FIELD_ID=%d and FLAG_ROW=FALSE", MS_name, i,f);
 
-                        casa::Table query_tab = casa::tableCommand(query);
+                        casacore::Table query_tab = casacore::tableCommand(query);
 
-                        casa::ROArrayColumn<double> uvw_col(query_tab,"UVW");
-                        casa::ROArrayColumn<float> weight_col(query_tab,"WEIGHT");
-                        casa::ROArrayColumn<casa::Complex> data_col(query_tab,"DATA");
-                        casa::ROArrayColumn<bool> flag_data_col(query_tab,"FLAG");
+                        casacore::ROArrayColumn<double> uvw_col(query_tab,"UVW");
+                        casacore::ROArrayColumn<float> weight_col(query_tab,"WEIGHT");
+                        casacore::ROArrayColumn<casacore::Complex> data_col(query_tab,"DATA");
+                        casacore::ROArrayColumn<bool> flag_data_col(query_tab,"FLAG");
 
                         for (int k=0; k < query_tab.nrow(); k++) {
                                 uvw = uvw_col(k);
@@ -265,7 +265,7 @@ __host__ void readSubsampledMS(char *MS_name, Field *fields, freqData data, floa
         for(int f=0; f<data.nfields; f++) {
                 h = 0;
                 for(int i = 0; i < data.n_internal_frequencies; i++) {
-                        casa::Vector<double> chan_freq_vector;
+                        casacore::Vector<double> chan_freq_vector;
                         chan_freq_vector=chan_freq_col(i);
                         for(int j = 0; j < data.channels[i]; j++) {
                                 fields[f].visibilities[h].freq = chan_freq_vector[j];
@@ -296,21 +296,21 @@ __host__ void readMCNoiseSubsampledMS(char *MS_name, Field *fields, freqData dat
         long c;
         char *query;
         string dir = MS_name;
-        casa::Table main_tab(dir);
+        casacore::Table main_tab(dir);
 
-        casa::Table spectral_window_tab(main_tab.keywordSet().asTable("SPECTRAL_WINDOW"));
-        casa::Table polarization_tab(main_tab.keywordSet().asTable("POLARIZATION"));
+        casacore::Table spectral_window_tab(main_tab.keywordSet().asTable("SPECTRAL_WINDOW"));
+        casacore::Table polarization_tab(main_tab.keywordSet().asTable("POLARIZATION"));
 
-        casa::ROArrayColumn<casa::Int> correlation_col(polarization_tab,"CORR_TYPE");
-        casa::Vector<int> polarizations;
+        casacore::ROArrayColumn<casacore::Int> correlation_col(polarization_tab,"CORR_TYPE");
+        casacore::Vector<int> polarizations;
         polarizations=correlation_col(0);
 
-        casa::ROArrayColumn<casa::Double> chan_freq_col(spectral_window_tab,"CHAN_FREQ");
+        casacore::ROArrayColumn<casacore::Double> chan_freq_col(spectral_window_tab,"CHAN_FREQ");
 
-        casa::Vector<float> weights;
-        casa::Vector<double> uvw;
-        casa::Matrix<casa::Complex> dataCol;
-        casa::Matrix<casa::Bool> flagCol;
+        casacore::Vector<float> weights;
+        casacore::Vector<double> uvw;
+        casacore::Matrix<casacore::Complex> dataCol;
+        casacore::Matrix<casacore::Bool> flagCol;
 
         bool flag;
         size_t needed;
@@ -332,12 +332,12 @@ __host__ void readMCNoiseSubsampledMS(char *MS_name, Field *fields, freqData dat
                         query = (char*) malloc(needed*sizeof(char));
                         snprintf(query, needed, "select * from %s where DATA_DESC_ID=%d and FIELD_ID=%d and FLAG_ROW=FALSE", MS_name, i,f);
 
-                        casa::Table query_tab = casa::tableCommand(query);
+                        casacore::Table query_tab = casacore::tableCommand(query);
 
-                        casa::ROArrayColumn<double> uvw_col(query_tab,"UVW");
-                        casa::ROArrayColumn<float> weight_col(query_tab,"WEIGHT");
-                        casa::ROArrayColumn<casa::Complex> data_col(query_tab,"DATA");
-                        casa::ROArrayColumn<bool> flag_data_col(query_tab,"FLAG");
+                        casacore::ROArrayColumn<double> uvw_col(query_tab,"UVW");
+                        casacore::ROArrayColumn<float> weight_col(query_tab,"WEIGHT");
+                        casacore::ROArrayColumn<casacore::Complex> data_col(query_tab,"DATA");
+                        casacore::ROArrayColumn<bool> flag_data_col(query_tab,"FLAG");
 
                         for (int k=0; k < query_tab.nrow(); k++) {
                                 uvw = uvw_col(k);
@@ -383,7 +383,7 @@ __host__ void readMCNoiseSubsampledMS(char *MS_name, Field *fields, freqData dat
         for(int f=0; f<data.nfields; f++) {
                 h = 0;
                 for(int i = 0; i < data.n_internal_frequencies; i++) {
-                        casa::Vector<double> chan_freq_vector;
+                        casacore::Vector<double> chan_freq_vector;
                         chan_freq_vector=chan_freq_col(i);
                         for(int j = 0; j < data.channels[i]; j++) {
                                 fields[f].visibilities[h].freq = chan_freq_vector[j];
@@ -416,21 +416,21 @@ __host__ void readMS(char *MS_name, Field *fields, freqData data)
         long c;
         char *query;
         string dir = MS_name;
-        casa::Table main_tab(dir);
+        casacore::Table main_tab(dir);
 
-        casa::Table spectral_window_tab(main_tab.keywordSet().asTable("SPECTRAL_WINDOW"));
+        casacore::Table spectral_window_tab(main_tab.keywordSet().asTable("SPECTRAL_WINDOW"));
 
-        casa::Table polarization_tab(main_tab.keywordSet().asTable("POLARIZATION"));
-        casa::ROArrayColumn<casa::Int> correlation_col(polarization_tab,"CORR_TYPE");
-        casa::Vector<int> polarizations;
+        casacore::Table polarization_tab(main_tab.keywordSet().asTable("POLARIZATION"));
+        casacore::ROArrayColumn<casacore::Int> correlation_col(polarization_tab,"CORR_TYPE");
+        casacore::Vector<int> polarizations;
         polarizations=correlation_col(0);
 
-        casa::ROArrayColumn<casa::Double> chan_freq_col(spectral_window_tab,"CHAN_FREQ");
+        casacore::ROArrayColumn<casacore::Double> chan_freq_col(spectral_window_tab,"CHAN_FREQ");
 
-        casa::Vector<float> weights;
-        casa::Vector<double> uvw;
-        casa::Matrix<casa::Complex> dataCol;
-        casa::Matrix<casa::Bool> flagCol;
+        casacore::Vector<float> weights;
+        casacore::Vector<double> uvw;
+        casacore::Matrix<casacore::Complex> dataCol;
+        casacore::Matrix<casacore::Bool> flagCol;
         bool flag;
         size_t needed;
 
@@ -447,12 +447,12 @@ __host__ void readMS(char *MS_name, Field *fields, freqData data)
                         query = (char*) malloc(needed*sizeof(char));
                         snprintf(query, needed, "select * from %s where DATA_DESC_ID=%d and FIELD_ID=%d and FLAG_ROW=FALSE", MS_name, i,f);
 
-                        casa::Table query_tab = casa::tableCommand(query);
+                        casacore::Table query_tab = casacore::tableCommand(query);
 
-                        casa::ROArrayColumn<double> uvw_col(query_tab,"UVW");
-                        casa::ROArrayColumn<float> weight_col(query_tab,"WEIGHT");
-                        casa::ROArrayColumn<casa::Complex> data_col(query_tab,"DATA");
-                        casa::ROArrayColumn<bool> flag_data_col(query_tab,"FLAG");
+                        casacore::ROArrayColumn<double> uvw_col(query_tab,"UVW");
+                        casacore::ROArrayColumn<float> weight_col(query_tab,"WEIGHT");
+                        casacore::ROArrayColumn<casacore::Complex> data_col(query_tab,"DATA");
+                        casacore::ROArrayColumn<bool> flag_data_col(query_tab,"FLAG");
 
                         for (int k=0; k < query_tab.nrow(); k++) {
                                 uvw = uvw_col(k);
@@ -484,7 +484,7 @@ __host__ void readMS(char *MS_name, Field *fields, freqData data)
         for(int f=0; f<data.nfields; f++) {
                 h = 0;
                 for(int i = 0; i < data.n_internal_frequencies; i++) {
-                        casa::Vector<double> chan_freq_vector;
+                        casacore::Vector<double> chan_freq_vector;
                         chan_freq_vector=chan_freq_col(i);
                         for(int j = 0; j < data.channels[i]; j++) {
                                 fields[f].visibilities[h].freq = chan_freq_vector[j];
@@ -514,8 +514,8 @@ __host__ void MScopy(char const *in_dir, char const *in_dir_dest, int verbose_fl
   string dir_origin = in_dir;
   string dir_dest = in_dir_dest;
 
-  casa::Table tab_src(dir_origin);
-  tab_src.deepCopy(dir_dest,casa::Table::New);
+  casacore::Table tab_src(dir_origin);
+  tab_src.deepCopy(dir_dest,casacore::Table::New);
   if (verbose_flag) {
       printf("Copied\n");
   }
@@ -562,7 +562,7 @@ __host__ void writeMS(char *infile, char *outfile, Field *fields, freqData data,
         char* out_col = "DATA";
         string dir=outfile;
         string query;
-        casa::Table main_tab(dir,casa::Table::Update);
+        casacore::Table main_tab(dir,casacore::Table::Update);
         string column_name=out_col;
 
         if (main_tab.tableDesc().isColumn(column_name))
@@ -570,7 +570,7 @@ __host__ void writeMS(char *infile, char *outfile, Field *fields, freqData data,
                 printf("Column %s already exists... skipping creation...\n", out_col);
         }else{
                 printf("Adding %s to the main table...\n", out_col);
-                main_tab.addColumn(casa::ArrayColumnDesc <casa::Complex>(column_name,"created by gpuvsim"));
+                main_tab.addColumn(casacore::ArrayColumnDesc <casacore::Complex>(column_name,"created by gpuvsim"));
                 main_tab.flush();
         }
 
@@ -578,12 +578,12 @@ __host__ void writeMS(char *infile, char *outfile, Field *fields, freqData data,
         {
                 query="UPDATE "+dir+" set "+column_name+"=DATA";
                 printf("Duplicating DATA column into %s\n", out_col);
-                casa::tableCommand(query);
+                casacore::tableCommand(query);
         }
 
-        casa::TableRow row(main_tab, casa::stringToVector(column_name+",FLAG,FIELD_ID,WEIGHT,FLAG_ROW,DATA_DESC_ID"));
-        casa::Vector<casa::Bool> auxbool;
-        casa::Vector<float> weights;
+        casacore::TableRow row(main_tab, casacore::stringToVector(column_name+",FLAG,FIELD_ID,WEIGHT,FLAG_ROW,DATA_DESC_ID"));
+        casacore::Vector<casacore::Bool> auxbool;
+        casacore::Vector<float> weights;
         bool flag;
         int spw, field, h = 0, g = 0;
         for(int f=0; f<data.nfields; f++) {
@@ -591,18 +591,18 @@ __host__ void writeMS(char *infile, char *outfile, Field *fields, freqData data,
                 for(int i=0; i < data.n_internal_frequencies; i++) {
                         for(int j=0; j < data.channels[i]; j++) {
                                 for (int k=0; k < data.nsamples; k++) {
-                                        const casa::TableRecord &values = row.get(k);
+                                        const casacore::TableRecord &values = row.get(k);
                                         flag = values.asBool("FLAG_ROW");
                                         spw = values.asInt("DATA_DESC_ID");
                                         field = values.asInt("FIELD_ID");
-                                        casa::Array<casa::Bool> flagCol = values.asArrayBool("FLAG");
-                                        casa::Array<casa::Complex> dataCol = values.asArrayComplex(column_name);
+                                        casacore::Array<casacore::Bool> flagCol = values.asArrayBool("FLAG");
+                                        casacore::Array<casacore::Complex> dataCol = values.asArrayComplex(column_name);
                                         weights=values.asArrayFloat("WEIGHT");
                                         if(field == f && spw == i && flag == false) {
                                                 for (int sto=0; sto< data.nstokes; sto++) {
                                                         auxbool = flagCol[j][sto];
                                                         if(auxbool[0] == false && weights[sto] > 0.0) {
-                                                                dataCol[j][sto] = casa::Complex(fields[f].visibilities[g].Vo[h].x - fields[f].visibilities[g].Vm[h].x, fields[f].visibilities[g].Vo[h].y - fields[f].visibilities[g].Vm[h].y);
+                                                                dataCol[j][sto] = casacore::Complex(fields[f].visibilities[g].Vo[h].x - fields[f].visibilities[g].Vm[h].x, fields[f].visibilities[g].Vo[h].y - fields[f].visibilities[g].Vm[h].y);
                                                                 weights[sto] = fields[f].visibilities[g].weight[h];
                                                                 h++;
                                                         }
@@ -625,7 +625,7 @@ __host__ void writeMSSIM(char *infile, char *outfile, Field *fields, freqData da
         char* out_col = "DATA";
         string dir=outfile;
         string query;
-        casa::Table main_tab(dir,casa::Table::Update);
+        casacore::Table main_tab(dir,casacore::Table::Update);
         string column_name=out_col;
 
         if (main_tab.tableDesc().isColumn(column_name))
@@ -633,7 +633,7 @@ __host__ void writeMSSIM(char *infile, char *outfile, Field *fields, freqData da
                 printf("Column %s already exists... skipping creation...\n", out_col);
         }else{
                 printf("Adding %s to the main table...\n", out_col);
-                main_tab.addColumn(casa::ArrayColumnDesc <casa::Complex>(column_name,"created by gpuvsim"));
+                main_tab.addColumn(casacore::ArrayColumnDesc <casacore::Complex>(column_name,"created by gpuvsim"));
                 main_tab.flush();
         }
 
@@ -641,12 +641,12 @@ __host__ void writeMSSIM(char *infile, char *outfile, Field *fields, freqData da
         {
                 query="UPDATE "+dir+" set "+column_name+"=DATA";
                 printf("Duplicating DATA column into %s\n", out_col);
-                casa::tableCommand(query);
+                casacore::tableCommand(query);
         }
 
-        casa::TableRow row(main_tab, casa::stringToVector(column_name+",FLAG,FIELD_ID,WEIGHT,FLAG_ROW,DATA_DESC_ID"));
-        casa::Vector<casa::Bool> auxbool;
-        casa::Vector<float> weights;
+        casacore::TableRow row(main_tab, casacore::stringToVector(column_name+",FLAG,FIELD_ID,WEIGHT,FLAG_ROW,DATA_DESC_ID"));
+        casacore::Vector<casacore::Bool> auxbool;
+        casacore::Vector<float> weights;
         bool flag;
         int spw, field, h = 0, g = 0;
         for(int f=0; f<data.nfields; f++) {
@@ -654,18 +654,18 @@ __host__ void writeMSSIM(char *infile, char *outfile, Field *fields, freqData da
                 for(int i=0; i < data.n_internal_frequencies; i++) {
                         for(int j=0; j < data.channels[i]; j++) {
                                 for (int k=0; k < data.nsamples; k++) {
-                                        const casa::TableRecord &values = row.get(k);
+                                        const casacore::TableRecord &values = row.get(k);
                                         flag = values.asBool("FLAG_ROW");
                                         spw = values.asInt("DATA_DESC_ID");
                                         field = values.asInt("FIELD_ID");
-                                        casa::Array<casa::Bool> flagCol = values.asArrayBool("FLAG");
-                                        casa::Array<casa::Complex> dataCol = values.asArrayComplex(column_name);
+                                        casacore::Array<casacore::Bool> flagCol = values.asArrayBool("FLAG");
+                                        casacore::Array<casacore::Complex> dataCol = values.asArrayComplex(column_name);
                                         weights=values.asArrayFloat("WEIGHT");
                                         if(field == f && spw == i && flag == false) {
                                                 for (int sto=0; sto< data.nstokes; sto++) {
                                                         auxbool = flagCol[j][sto];
                                                         if(auxbool[0] == false && weights[sto] > 0.0) {
-                                                                dataCol[j][sto] = casa::Complex(fields[f].visibilities[g].Vm[h].x, fields[f].visibilities[g].Vm[h].y);
+                                                                dataCol[j][sto] = casacore::Complex(fields[f].visibilities[g].Vm[h].x, fields[f].visibilities[g].Vm[h].y);
                                                                 h++;
                                                         }
                                                 }
@@ -681,13 +681,13 @@ __host__ void writeMSSIM(char *infile, char *outfile, Field *fields, freqData da
 
 }
 
-__host__ void writeMSSIMMC(char *infile, char *outfile, Field *fields, freqData data, int verbose_flag)
+__host__ void writeMSSIMMC(char *infile, char *outfile, Field *fields, freqData data, float factor, int verbose_flag)
 {
         MScopy(infile, outfile, verbose_flag);
         char* out_col = "DATA";
         string dir=outfile;
         string query;
-        casa::Table main_tab(dir,casa::Table::Update);
+        casacore::Table main_tab(dir,casacore::Table::Update);
         string column_name=out_col;
 
         if (main_tab.tableDesc().isColumn(column_name))
@@ -695,7 +695,7 @@ __host__ void writeMSSIMMC(char *infile, char *outfile, Field *fields, freqData 
                 printf("Column %s already exists... skipping creation...\n", out_col);
         }else{
                 printf("Adding %s to the main table...\n", out_col);
-                main_tab.addColumn(casa::ArrayColumnDesc <casa::Complex>(column_name,"created by gpuvsim"));
+                main_tab.addColumn(casacore::ArrayColumnDesc <casacore::Complex>(column_name,"created by gpuvsim"));
                 main_tab.flush();
         }
 
@@ -703,12 +703,12 @@ __host__ void writeMSSIMMC(char *infile, char *outfile, Field *fields, freqData 
         {
                 query="UPDATE "+dir+" set "+column_name+"=DATA";
                 printf("Duplicating DATA column into %s\n", out_col);
-                casa::tableCommand(query);
+                casacore::tableCommand(query);
         }
 
-        casa::TableRow row(main_tab, casa::stringToVector(column_name+",FLAG,FIELD_ID,WEIGHT,FLAG_ROW,DATA_DESC_ID"));
-        casa::Vector<casa::Bool> auxbool;
-        casa::Vector<float> weights;
+        casacore::TableRow row(main_tab, casacore::stringToVector(column_name+",FLAG,FIELD_ID,WEIGHT,FLAG_ROW,DATA_DESC_ID"));
+        casacore::Vector<casacore::Bool> auxbool;
+        casacore::Vector<float> weights;
         bool flag;
         int spw, field, h = 0, g = 0;
         float real_n, imag_n;
@@ -720,12 +720,12 @@ __host__ void writeMSSIMMC(char *infile, char *outfile, Field *fields, freqData 
                 for(int i=0; i < data.n_internal_frequencies; i++) {
                         for(int j=0; j < data.channels[i]; j++) {
                                 for (int k=0; k < data.nsamples; k++) {
-                                        const casa::TableRecord &values = row.get(k);
+                                        const casacore::TableRecord &values = row.get(k);
                                         flag = values.asBool("FLAG_ROW");
                                         spw = values.asInt("DATA_DESC_ID");
                                         field = values.asInt("FIELD_ID");
-                                        casa::Array<casa::Bool> flagCol = values.asArrayBool("FLAG");
-                                        casa::Array<casa::Complex> dataCol = values.asArrayComplex(column_name);
+                                        casacore::Array<casacore::Bool> flagCol = values.asArrayBool("FLAG");
+                                        casacore::Array<casacore::Complex> dataCol = values.asArrayComplex(column_name);
                                         weights=values.asArrayFloat("WEIGHT");
                                         if(field == f && spw == i && flag == false) {
                                                 for (int sto=0; sto< data.nstokes; sto++) {
@@ -733,7 +733,7 @@ __host__ void writeMSSIMMC(char *infile, char *outfile, Field *fields, freqData 
                                                         if(auxbool[0] == false && weights[sto] > 0.0) {
                                                                 real_n = Normal(0.0, 1.0);
                                                                 imag_n = Normal(0.0, 1.0);
-                                                                dataCol[j][sto] = casa::Complex(fields[f].visibilities[g].Vm[h].x + real_n * (1/sqrt(weights[sto])), fields[f].visibilities[g].Vm[h].y + imag_n * (1/sqrt(weights[sto])));
+                                                                dataCol[j][sto] = casacore::Complex(fields[f].visibilities[g].Vm[h].x + real_n * factor * (1/sqrt(weights[sto])), fields[f].visibilities[g].Vm[h].y + imag_n * factor * (1/sqrt(weights[sto])));
                                                                 h++;
                                                         }
                                                 }
@@ -755,7 +755,7 @@ __host__ void writeMSSIMSubsampled(char *infile, char *outfile, Field *fields, f
         char* out_col = "DATA";
         string dir=outfile;
         string query;
-        casa::Table main_tab(dir,casa::Table::Update);
+        casacore::Table main_tab(dir,casacore::Table::Update);
         string column_name=out_col;
 
         if (main_tab.tableDesc().isColumn(column_name))
@@ -763,7 +763,7 @@ __host__ void writeMSSIMSubsampled(char *infile, char *outfile, Field *fields, f
                 printf("Column %s already exists... skipping creation...\n", out_col);
         }else{
                 printf("Adding %s to the main table...\n", out_col);
-                main_tab.addColumn(casa::ArrayColumnDesc <casa::Complex>(column_name,"created by gpuvsim"));
+                main_tab.addColumn(casacore::ArrayColumnDesc <casacore::Complex>(column_name,"created by gpuvsim"));
                 main_tab.flush();
         }
 
@@ -771,12 +771,12 @@ __host__ void writeMSSIMSubsampled(char *infile, char *outfile, Field *fields, f
         {
                 query="UPDATE "+dir+" set "+column_name+"=DATA";
                 printf("Duplicating DATA column into %s\n", out_col);
-                casa::tableCommand(query);
+                casacore::tableCommand(query);
         }
 
-        casa::TableRow row(main_tab, casa::stringToVector(column_name+",FLAG,FIELD_ID,WEIGHT,FLAG_ROW,DATA_DESC_ID"));
-        casa::Vector<casa::Bool> auxbool;
-        casa::Vector<float> weights;
+        casacore::TableRow row(main_tab, casacore::stringToVector(column_name+",FLAG,FIELD_ID,WEIGHT,FLAG_ROW,DATA_DESC_ID"));
+        casacore::Vector<casacore::Bool> auxbool;
+        casacore::Vector<float> weights;
         bool flag;
         int spw, field, h = 0, g = 0;
         float u;
@@ -788,12 +788,12 @@ __host__ void writeMSSIMSubsampled(char *infile, char *outfile, Field *fields, f
                 for(int i=0; i < data.n_internal_frequencies; i++) {
                         for(int j=0; j < data.channels[i]; j++) {
                                 for (int k=0; k < data.nsamples; k++) {
-                                        const casa::TableRecord &values = row.get(k);
+                                        const casacore::TableRecord &values = row.get(k);
                                         flag = values.asBool("FLAG_ROW");
                                         spw = values.asInt("DATA_DESC_ID");
                                         field = values.asInt("FIELD_ID");
-                                        casa::Array<casa::Bool> flagCol = values.asArrayBool("FLAG");
-                                        casa::Array<casa::Complex> dataCol = values.asArrayComplex(column_name);
+                                        casacore::Array<casacore::Bool> flagCol = values.asArrayBool("FLAG");
+                                        casacore::Array<casacore::Complex> dataCol = values.asArrayComplex(column_name);
                                         weights=values.asArrayFloat("WEIGHT");
                                         if(field == f && spw == i && flag == false) {
                                                 for (int sto=0; sto< data.nstokes; sto++) {
@@ -801,9 +801,9 @@ __host__ void writeMSSIMSubsampled(char *infile, char *outfile, Field *fields, f
                                                         if(auxbool[0] == false && weights[sto] > 0.0) {
                                                                 u = Random();
                                                                 if(u<random_probability) {
-                                                                        dataCol[j][sto] = casa::Complex(fields[f].visibilities[g].Vm[h].x, fields[f].visibilities[g].Vm[h].y);
+                                                                        dataCol[j][sto] = casacore::Complex(fields[f].visibilities[g].Vm[h].x, fields[f].visibilities[g].Vm[h].y);
                                                                 }else{
-                                                                        dataCol[j][sto] = casa::Complex(fields[f].visibilities[g].Vm[h].x, fields[f].visibilities[g].Vm[h].y);
+                                                                        dataCol[j][sto] = casacore::Complex(fields[f].visibilities[g].Vm[h].x, fields[f].visibilities[g].Vm[h].y);
                                                                         weights[sto] = 0.0;
                                                                 }
                                                                 h++;
@@ -822,13 +822,13 @@ __host__ void writeMSSIMSubsampled(char *infile, char *outfile, Field *fields, f
 }
 
 
-__host__ void writeMSSIMSubsampledMC(char *infile, char *outfile, Field *fields, freqData data, float random_probability, int verbose_flag)
+__host__ void writeMSSIMSubsampledMC(char *infile, char *outfile, Field *fields, freqData data, float random_probability, float factor, int verbose_flag)
 {
         MScopy(infile, outfile, verbose_flag);
         char* out_col = "DATA";
         string dir=outfile;
         string query;
-        casa::Table main_tab(dir,casa::Table::Update);
+        casacore::Table main_tab(dir,casacore::Table::Update);
         string column_name=out_col;
 
         if (main_tab.tableDesc().isColumn(column_name))
@@ -836,7 +836,7 @@ __host__ void writeMSSIMSubsampledMC(char *infile, char *outfile, Field *fields,
                 printf("Column %s already exists... skipping creation...\n", out_col);
         }else{
                 printf("Adding %s to the main table...\n", out_col);
-                main_tab.addColumn(casa::ArrayColumnDesc <casa::Complex>(column_name,"created by gpuvsim"));
+                main_tab.addColumn(casacore::ArrayColumnDesc <casacore::Complex>(column_name,"created by gpuvsim"));
                 main_tab.flush();
         }
 
@@ -844,12 +844,12 @@ __host__ void writeMSSIMSubsampledMC(char *infile, char *outfile, Field *fields,
         {
                 query="UPDATE "+dir+" set "+column_name+"=DATA";
                 printf("Duplicating DATA column into %s\n", out_col);
-                casa::tableCommand(query);
+                casacore::tableCommand(query);
         }
 
-        casa::TableRow row(main_tab, casa::stringToVector(column_name+",FLAG,FIELD_ID,WEIGHT,FLAG_ROW,DATA_DESC_ID"));
-        casa::Vector<casa::Bool> auxbool;
-        casa::Vector<float> weights;
+        casacore::TableRow row(main_tab, casacore::stringToVector(column_name+",FLAG,FIELD_ID,WEIGHT,FLAG_ROW,DATA_DESC_ID"));
+        casacore::Vector<casacore::Bool> auxbool;
+        casacore::Vector<float> weights;
         bool flag;
         int spw, field, h = 0, g = 0;
         float real_n, imag_n;
@@ -862,12 +862,12 @@ __host__ void writeMSSIMSubsampledMC(char *infile, char *outfile, Field *fields,
                 for(int i=0; i < data.n_internal_frequencies; i++) {
                         for(int j=0; j < data.channels[i]; j++) {
                                 for (int k=0; k < data.nsamples; k++) {
-                                        const casa::TableRecord &values = row.get(k);
+                                        const casacore::TableRecord &values = row.get(k);
                                         flag = values.asBool("FLAG_ROW");
                                         spw = values.asInt("DATA_DESC_ID");
                                         field = values.asInt("FIELD_ID");
-                                        casa::Array<casa::Bool> flagCol = values.asArrayBool("FLAG");
-                                        casa::Array<casa::Complex> dataCol = values.asArrayComplex(column_name);
+                                        casacore::Array<casacore::Bool> flagCol = values.asArrayBool("FLAG");
+                                        casacore::Array<casacore::Complex> dataCol = values.asArrayComplex(column_name);
                                         weights=values.asArrayFloat("WEIGHT");
                                         if(field == f && spw == i && flag == false) {
                                                 for (int sto=0; sto< data.nstokes; sto++) {
@@ -877,9 +877,9 @@ __host__ void writeMSSIMSubsampledMC(char *infile, char *outfile, Field *fields,
                                                                 if(u<random_probability) {
                                                                         real_n = Normal(0.0, 1.0);
                                                                         imag_n = Normal(0.0, 1.0);
-                                                                        dataCol[j][sto] = casa::Complex(fields[f].visibilities[g].Vm[h].x + real_n * (1/sqrt(weights[sto])), fields[f].visibilities[g].Vm[h].y + imag_n * (1/sqrt(weights[sto])));
+                                                                        dataCol[j][sto] = casacore::Complex(fields[f].visibilities[g].Vm[h].x + real_n * factor * (1/sqrt(weights[sto])), fields[f].visibilities[g].Vm[h].y + imag_n * factor *(1/sqrt(weights[sto])));
                                                                 }else{
-                                                                        dataCol[j][sto] = casa::Complex(fields[f].visibilities[g].Vm[h].x, fields[f].visibilities[g].Vm[h].y);
+                                                                        dataCol[j][sto] = casacore::Complex(fields[f].visibilities[g].Vm[h].x, fields[f].visibilities[g].Vm[h].y);
                                                                         weights[sto] = 0.0;
                                                                 }
                                                                 h++;

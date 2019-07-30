@@ -10,7 +10,7 @@
 #include <casa/Arrays/Matrix.h>
 #include <casa/Arrays/Slicer.h>
 #include <casa/Arrays/ArrayMath.h>
-#include <tables/Tables/TableParse.h>
+#include <tables/TaQL/TableParse.h>
 #include <ms/MeasurementSets.h>
 #include <tables/Tables/ColumnDesc.h>
 #include <tables/Tables/ScaColDesc.h>
@@ -43,11 +43,6 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
       if (abort) exit(code);
    }
 }
-
-//Included variable from Makefile using "make NEWCASA=1"
-#ifdef NEWCASA
-namespace casa = casacore;
-#endif
 
 typedef struct freqData{
   int n_internal_frequencies;
@@ -108,9 +103,9 @@ __host__ void residualsToHost(Field *fields, freqData data, int num_gpus, int fi
 __host__ void readMS(char *file, char *file2, Field *fields);
 __host__ void writeMS(char *infile, char *outfile, Field *fields, freqData data, float random_probability, int verbose_flag);
 __host__ void writeMSSIM(char *infile, char *outfile, Field *fields, freqData data, int verbose_flag);
-__host__ void writeMSSIMMC(char *infile, char *outfile, Field *fields, freqData data, int verbose_flag);
+__host__ void writeMSSIMMC(char *infile, char *outfile, Field *fields, freqData data, float factor, int verbose_flag);
 __host__ void writeMSSIMSubsampled(char *infile, char *outfile, Field *fields, freqData data, float random_probability, int verbose_flag);
-__host__ void writeMSSIMSubsampledMC(char *infile, char *outfile, Field *fields, freqData data, float random_probability, int verbose_flag);
+__host__ void writeMSSIMSubsampledMC(char *infile, char *outfile, Field *fields, freqData data, float random_probability, float factor, int verbose_flag);
 
 __host__ void fitsOutputFloat(float *I, fitsfile *canvas, char *mempath, int iteration, long M, long N, int option);
 __host__ void fitsOutputCufftComplex(cufftComplex *I, fitsfile *canvas, char *out_image, char *mempath, int iteration, float fg_scale, long M, long N, int option);

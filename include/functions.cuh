@@ -55,6 +55,7 @@ typedef struct variables {
   int blockSizeV;
   float randoms;
   float nu_0;
+  float noise;
 } Vars;
 
 __host__ void goToError();

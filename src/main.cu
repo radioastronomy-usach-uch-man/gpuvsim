@@ -42,13 +42,13 @@ float2 *device_I;
 cufftComplex *device_I_nu, *device_V;
 
 float beam_noise, beam_bmaj;
-float beam_bmin, b_noise_aux, random_probability = 1.0;
+float beam_bmin, b_noise_aux, random_probability = 1.0, apply_noise;
 float noise_jypix, fg_scale, antenna_diameter, pb_factor, pb_cutoff, nu_0;
 
 dim3 threadsPerBlockNN;
 dim3 numBlocksNN;
 
-int threadsVectorReduceNN, blocksVectorReduceNN, verbose_flag = 0, apply_noise = 0, it_maximum, status_mod_in, status_mod_in_alpha;
+int threadsVectorReduceNN, blocksVectorReduceNN, verbose_flag = 0, it_maximum, status_mod_in, status_mod_in_alpha;
 int selected, t_telescope, reg_term;
 char *output;
 
@@ -101,6 +101,7 @@ __host__ int main(int argc, char **argv) {
   char *inputdat = variables.inputdat;
 	char *modinput = variables.modin;
   char *alphainput = variables.alpha;
+  apply_noise = variables.noise;
   nu_0 = variables.nu_0;
   selected = variables.select;
   int total_visibilities = 0;
@@ -361,11 +362,11 @@ __host__ int main(int argc, char **argv) {
 
 
   if(apply_noise && random_probability < 1.0){
-    writeMSSIMSubsampledMC(msinput, msoutput, fields, data, random_probability, verbose_flag);
+    writeMSSIMSubsampledMC(msinput, msoutput, fields, data, random_probability, apply_noise, verbose_flag);
   }else if(random_probability < 1.0){
     writeMSSIMSubsampled(msinput, msoutput, fields, data, random_probability, verbose_flag);
   }else if(apply_noise){
-    writeMSSIMMC(msinput, msoutput, fields, data, verbose_flag);
+    writeMSSIMMC(msinput, msoutput, fields, data, apply_noise, verbose_flag);
   }else{
      writeMSSIM(msinput, msoutput, fields, data, verbose_flag);
   }

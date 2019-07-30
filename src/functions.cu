@@ -32,14 +32,14 @@
 
 extern long M, N;
 extern int numVisibilities, iterations, iterthreadsVectorNN, blocksVectorNN, crpix1, crpix2, \
-status_mod_in, verbose_flag, t_telescope, multigpu, firstgpu, reg_term, apply_noise;
+status_mod_in, verbose_flag, t_telescope, multigpu, firstgpu, reg_term;
 
 extern cufftHandle plan1GPU;
 extern float2 device_I;
 extern cufftComplex *device_I_nu, *device_V;
 
 extern float *device_noise_image;
-extern float noise_jypix, fg_scale, random_probability, nu_0;
+extern float noise_jypix, fg_scale, random_probability, nu_0, apply_noise;
 
 extern dim3 threadsPerBlockNN, numBlocksNN;
 
@@ -170,7 +170,7 @@ __host__ void print_help() {
   printf("    -s  --select           If multigpu option is OFF, then select the GPU ID of the GPU you will work on. (Default = 0)\n");
   printf("    -c  --copyright        Shows copyright conditions\n");
   printf("    -w  --warranty         Shows no warranty details\n");
-  printf("        --apply-noise      Apply random gaussian noise to visibilities\n");
+  printf("    -n  --apply-noise      Apply random gaussian noise to visibilities\n");
   printf("        --verbose          Shows information through all the execution\n");
 }
 
@@ -199,19 +199,19 @@ __host__ Vars getOptions(int argc, char **argv) {
   variables.blockSizeV = -1;
   variables.randoms = 1.0;
   variables.nu_0 = 0.0f;
+  variables.noise = 0.0;
 
 	long next_op;
-	const char* const short_op = "hi:o:O:I:m:s:X:Y:V:r:a:F:";
+	const char* const short_op = "hi:o:O:I:m:s:X:Y:V:r:a:F:n:";
 
 	const struct option long_op[] = { //Flag for help, copyright and warranty
                                     {"help", 0, NULL, 'h' },
                                     /* These options set a flag. */
                                     {"verbose", 0, &verbose_flag, 1},
-                                    {"apply-noise", 0, &apply_noise, 1},
                                     /* These options don’t set a flag. */
                                     {"input", 1, NULL, 'i' }, {"output", 1, NULL, 'o'}, {"inputdat", 1, NULL, 'I'},
                                     {"modin", 1, NULL, 'm' }, {"alpha", 1, NULL, 'a' }, {"nu_0", 1, NULL, 'F'},
-                                    {"select", 1, NULL, 's'}, {"blockSizeX", 1, NULL, 'X'},
+                                    {"select", 1, NULL, 's'}, {"blockSizeX", 1, NULL, 'X'}, {"apply-noise", 0, NULL, 'n'},
                                     {"blockSizeY", 1, NULL, 'Y'}, {"blockSizeV", 1, NULL, 'V'}, {"random", 0, NULL, 'r'},
                                     { NULL, 0, NULL, 0 }};
 
@@ -269,6 +269,9 @@ __host__ Vars getOptions(int argc, char **argv) {
               break;
             case 'F':
               variables.nu_0 = atof(optarg);
+              break;
+            case 'n':
+              variables.noise = atof(optarg);
               break;
             case 'X':
               variables.blockSizeX = atoi(optarg);
