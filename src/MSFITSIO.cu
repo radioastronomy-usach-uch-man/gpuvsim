@@ -63,7 +63,7 @@ __host__ freqData countVisibilities(char * MS_name, Field *&fields)
         freqsAndVisibilities.nstokes=n_corr(0);
 
         casacore::Vector<float> weights;
-        casacore::Matrix<casacore::Bool> flagCol;
+        casacore::Matrix<bool> flagCol;
 
         bool flag;
         int counter;
@@ -74,6 +74,8 @@ __host__ freqData countVisibilities(char * MS_name, Field *&fields)
         for(int f=0; f<freqsAndVisibilities.nfields; f++) {
                 counter = 0;
                 for(int i=0; i < freqsAndVisibilities.n_internal_frequencies; i++) {
+                        flagCol.resize(freqsAndVisibilities.nstokes, freqsAndVisibilities.channels[i]);
+
                         // Query for data with forced IF and FIELD
                         needed = snprintf(NULL, 0, "select * from %s where DATA_DESC_ID=%d and FIELD_ID=%d and FLAG_ROW=FALSE", MS_name, i,f) + 1;
                         query = (char*) malloc(needed*sizeof(char));
@@ -431,6 +433,7 @@ __host__ void readMS(char *MS_name, Field *fields, freqData data)
         casacore::Vector<double> uvw;
         casacore::Matrix<casacore::Complex> dataCol;
         casacore::Matrix<casacore::Bool> flagCol;
+
         bool flag;
         size_t needed;
 
@@ -443,6 +446,9 @@ __host__ void readMS(char *MS_name, Field *fields, freqData data)
         for(int f=0; f<data.nfields; f++) {
                 g=0;
                 for(int i=0; i < data.n_internal_frequencies; i++) {
+                        dataCol.resize(data.nstokes, data.channels[i]);
+                        flagCol.resize(data.nstokes, data.channels[i]);
+
                         needed = snprintf(NULL, 0, "select * from %s where DATA_DESC_ID=%d and FIELD_ID=%d and FLAG_ROW=FALSE", MS_name, i,f) + 1;
                         query = (char*) malloc(needed*sizeof(char));
                         snprintf(query, needed, "select * from %s where DATA_DESC_ID=%d and FIELD_ID=%d and FLAG_ROW=FALSE", MS_name, i,f);
