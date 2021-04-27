@@ -197,9 +197,9 @@ __host__ Vars getOptions(int argc, char **argv) {
   variables.blockSizeX = -1;
   variables.blockSizeY = -1;
   variables.blockSizeV = -1;
-  variables.randoms = 1.0;
+  variables.randoms = 1.0f;
   variables.nu_0 = 1.0f;
-  variables.noise = 0.0;
+  variables.noise = 1.0f;
 
 	long next_op;
 	const char* const short_op = "hi:o:O:I:m:s:X:Y:V:r:a:F:n:";

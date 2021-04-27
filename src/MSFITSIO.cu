@@ -608,7 +608,7 @@ __host__ void writeMS(char *infile, char *outfile, Field *fields, freqData data,
                                                 for (int sto=0; sto< data.nstokes; sto++) {
                                                         auxbool = flagCol[j][sto];
                                                         if(auxbool[0] == false && weights[sto] > 0.0) {
-                                                                dataCol[j][sto] = casacore::Complex(fields[f].visibilities[g].Vo[h].x - fields[f].visibilities[g].Vm[h].x, fields[f].visibilities[g].Vo[h].y - fields[f].visibilities[g].Vm[h].y);
+                                                                dataCol[j][sto] = casacore::Complex(fields[f].visibilities[g].Vm[h].x, fields[f].visibilities[g].Vm[h].y);
                                                                 weights[sto] = fields[f].visibilities[g].weight[h];
                                                                 h++;
                                                         }
@@ -689,6 +689,7 @@ __host__ void writeMSSIM(char *infile, char *outfile, Field *fields, freqData da
 
 __host__ void writeMSSIMMC(char *infile, char *outfile, Field *fields, freqData data, float factor, int verbose_flag)
 {
+        printf("Writing MS with a noise factor %.3f\n", factor);
         MScopy(infile, outfile, verbose_flag);
         char* out_col = "DATA";
         string dir=outfile;
